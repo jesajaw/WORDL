@@ -1,5 +1,3 @@
-# Wordle Word Filter
-
 # About
 
 There is the pretty neat game WORDL - which has nowadays multiple provider - but personally I like the one from the **New York Times** the most (wasnt it also the first introducing it?).
@@ -10,10 +8,7 @@ Well anyways, I saw the video from 3Blue1Brown: [Solving Wordle using informatio
 
 # Features
 
-- Filters a 5-letter word list down to the words still possible, based on grey/yellow/green Wordle clues
-- Correctly handles repeated letters (grey doesn't wrongly exclude a letter that's also confirmed present elsewhere)
-- Input validation with themed error popups
-- Reset button and live result counter
+- Filters a 5-letter word list down to the words still possible (based on clues)
 - 3 switchable color themes (Dark / Purple, Dark / Blue, Black / White)
 
 ## Files
