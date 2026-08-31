@@ -1,10 +1,10 @@
 # About
 
-There is the pretty neat game WORDL - which has nowadays multiple provider - but personally I like the one from the **New York Times** the most (wasnt it also the first introducing it?).
+Wordle is a fantastic daily puzzle game, and while there are many versions available today, the **New York Times** edition remains a classic favorite [[NWT WORDL](https://www.nytimes.com/games/wordle/index.html)].
 
-[NWT WORDL](https://www.nytimes.com/games/wordle/index.html)
+If you have ever watched 3Blue1Brown's brilliant video, [Solving Wordle using information theory](https://www.youtube.com/watch?v=v68zYyaEmEA), you know how fascinating the strategy behind optimal guessing can be. However, sometimes you just need a little extra assistance cracking the daily puzzle.
 
-Well anyways, I saw the video from 3Blue1Brown: [Solving Wordle using information theory](https://www.youtube.com/watch?v=v68zYyaEmEA) and thought, well thats a nice help but wouldnt it be nice for a dumbass like me to find it at all. So and this is why I implemented this little script which basically provides the solution for it.
+That is why I put together this simple script - to help guide you toward the solution and make solving the puzzle a breeze!
 
 # Features
 
