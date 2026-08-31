@@ -18,7 +18,7 @@ That is why I put together this simple script - to help guide you toward the sol
   to swap out or extend
 
 ## Run
-
+Once you have cloned the repository to your local machine, simply navigate to the correct folder in your terminal and run the script using:
 ```
 python wordle_filter.py
 ```
@@ -26,15 +26,8 @@ python wordle_filter.py
 ## Clue format
 
 - **Absent letters (grey):** plain letters, e.g. `xyz`
-- **Correct position (green):** `position:letter`, comma-separated,
-  e.g. `1:c,3:r`
-- **Wrong position (yellow):** `position:letter`, comma-separated,
-  e.g. `2:a,4:a`
-
-Positions are 1-indexed (1 to 5). A letter marked both green/yellow
-somewhere and grey elsewhere (repeated letters) is handled correctly —
-the grey mark only excludes the letter if it isn't also confirmed
-present.
+- **Correct position (green):**
+- **Wrong position (yellow):**
 
 ## Theme
 
