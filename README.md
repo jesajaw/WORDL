@@ -13,7 +13,7 @@ That is why I put together this simple script - to help guide you toward the sol
 
 ## Files
 
-- `wordle.py` — the app (filtering logic + Tkinter UI)
+- `wordle.py` — filtering logic + Tkinter UI
 - `wordlist.py` — the 5-letter word list, kept separate so it's easy to swap out or extend
 
 ## Run
