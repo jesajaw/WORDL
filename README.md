@@ -13,25 +13,19 @@ That is why I put together this simple script - to help guide you toward the sol
 
 ## Files
 
-- `wordle_filter_gui.py` — the app (filtering logic + Tkinter UI)
-- `wordlist.py` — the 5-letter word list, kept separate so it's easy
-  to swap out or extend
+- `wordle.py` — the app (filtering logic + Tkinter UI)
+- `wordlist.py` — the 5-letter word list, kept separate so it's easy to swap out or extend
 
 ## Run
 Once you have cloned the repository to your local machine, simply navigate to the correct folder in your terminal and run the script using:
 ```
-python wordle_filter.py
+python wordle.py
 ```
 
-## Clue format
+Clue handling
+-------------
+A "grey" letter only excludes a word if that letter isn't *also* marked yellow or green somewhere else (any row, any column). This covers repeated-letter cases correctly (e.g. the answer has one "e", you guessed two: one came back green, the other grey).
 
-- **Absent letters (grey):** plain letters, e.g. `xyz`
-- **Correct position (green):**
-- **Wrong position (yellow):**
-
-## Theme
-
-Pick a theme from the dropdown at the top: **Dark / Purple**,
-**Dark / Blue**, or **Black / White** — same palette approach as the
-DMX Derby Controller project. Error/validation popups follow the
-active theme instead of using the OS-default dialog style.
+Live filtering
+---------------
+Every tile edit schedules a filter run via `root.after(...)`; a new edit cancels the previous *scheduled* run before it fires, so a burst of fast edits (typing a whole row, clicking several colors) collapses into a single recompute instead of one per keystroke.
