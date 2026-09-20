@@ -1,22 +1,17 @@
 """
-Wordle-Filter
-===================
-
-Tkinter GUI that filters a 5-letter word list down to the words that are still possible, based on the clues Wordle gives you.
+Wordl Filter
+-------------
+UI that filters a 5-letter word list down to the words that are still possible (2025), based on the clues Wordle gives you.
 
 Clue entry is a tile board that looks like NYT Wordle:
-    - type letters on the keyboard -- focus starts on the first tile and auto-advances tile by tile, row by row, as you type
-    - click a tile's letter to cycle its color (the clue): grey (absent, the default) -> yellow (present) -> green (correct)
-You can fill in as many guess rows as you've actually played.
-The filter re-runs automatically after every change -- see "Live filtering" below.
+ - type letters on the keyboard; focus starts on the first tile and auto-advances tile by tile, row by row, as you type
+ - click a tile's letter to cycle its color/clue: grey:absent, default || yellow: present, not this position || green: correct
+You can fill in as many guess rows as you've actually played; filter re-runs automatically after every change.
+
 
 Clue handling
 -------------
 A "grey" letter only excludes a word if that letter isn't *also* marked yellow or green somewhere else (any row, any column). This covers repeated-letter cases correctly (e.g. the answer has one "e", you guessed two: one came back green, the other grey).
-
-Live filtering
----------------
-Every tile edit schedules a filter run via `root.after(...)`; a new edit cancels the previous *scheduled* run before it fires, so a burst of fast edits (typing a whole row, clicking several colors) collapses into a single recompute instead of one per keystroke. This is the Tkinter-native equivalent of "kill the old job when new input arrives" -- no actual subprocess needed, since filtering a few thousand words takes well under a millisecond; spawning a real process per keystroke would be pure overhead here.
 """
 
 import tkinter as tk
@@ -24,19 +19,17 @@ from tkinter import ttk, scrolledtext
 
 from wordlist import WORDS
 
+import sys
+import ctypes
+
 WORD_LENGTH = 5
 MAX_GUESSES = 6
+
+CYCLE = ["absent", "present", "correct"]
 
 FILTER_DEBOUNCE_MS = 150
 RESULT_COLUMNS = 6
 RESULT_FONT = ("Consolas", 11)
-
-
-# ------------------------------------------------------------
-# Color schemes
-# ------------------------------------------------------------
-
-COLOR_SCHEME = "dark_purple"
 
 _SCHEMES = {
     "dark_purple": dict(
@@ -52,8 +45,9 @@ _SCHEMES = {
         ACCENT="#ffffff", ACCENT_DARK="#808080", STATUS_TEXT="#d9d9d9",
     ),
 }
+# Color schemes
+_active = _SCHEMES["dark_purple"]
 
-_active = _SCHEMES[COLOR_SCHEME]
 COLOR_BG = _active["BG"]
 COLOR_BG_LIGHT = _active["BG_LIGHT"]
 COLOR_FG = _active["FG"]
@@ -70,8 +64,8 @@ TILE_BORDER = "#565758"
 TILE_TEXT = "#ffffff"
 
 
-class WordleFilter:
-    """Filters a word list based on Wordle-style clues."""
+class Filter:
+    # Filters a word list based on Wordle-style clues
     def __init__(self, wordlist, word_length=WORD_LENGTH):
         self.word_length = word_length
         self.wordlist = [
@@ -81,7 +75,7 @@ class WordleFilter:
         self.reset()
 
     def reset(self):
-        """Clears all clues (the loaded word list itself is kept)."""
+        # Clears all clues
         self.absent_letters = set()   # grey: not in the word at all
         self.present_letters = {}     # yellow: letter -> {excluded positions}
         self.fixed_positions = {}     # green: position -> letter
@@ -90,7 +84,7 @@ class WordleFilter:
         self.absent_letters.update(letters)
 
     def add_present(self, letter, position):
-        """`position` is 0-indexed. The letter is known to be in the word, just not at this position."""
+        # `position` is 0-indexed. The letter is known to be in the word, just not at this position.
         self.present_letters.setdefault(letter, set()).add(position)
 
     def add_fixed(self, position, letter):
@@ -123,12 +117,8 @@ class WordleFilter:
         return [w for w in self.wordlist if self._matches(w)]
 
 
-# ------------------------------------------------------------
-# Theme popup
-# ------------------------------------------------------------
+# Modal theme popups styled to match the app's color theme
 class ThemedDialog(tk.Toplevel):
-    """Modal popup styled to match the app's color theme."""
-
     def __init__(self, parent, title, message, buttons):
         super().__init__(parent)
         self.title(title)
@@ -136,20 +126,16 @@ class ThemedDialog(tk.Toplevel):
         self.resizable(False, False)
         self.transient(parent)
         self.grab_set()
+        force_dark_titlebar(parent)
 
         self.result = None
 
-        ttk.Label(self, text=message, wraplength=280, justify="left").pack(
-            padx=20, pady=(20, 10)
-        )
+        ttk.Label(self, text=message, wraplength=280, justify="left").pack(padx=20, pady=(20, 10))
 
         btn_row = ttk.Frame(self)
         btn_row.pack(padx=20, pady=(0, 20))
         for label in buttons:
-            ttk.Button(
-                btn_row, text=label,
-                command=lambda l=label: self._on_button(l),
-            ).pack(side="left", padx=5)
+            ttk.Button(btn_row, text=label, command=lambda l=label: self._on_button(l)).pack(side="left", padx=5)
 
         self.bind("<Escape>", lambda e: self._on_button(None))
         self.protocol("WM_DELETE_WINDOW", lambda: self._on_button(None))
@@ -169,21 +155,12 @@ class ThemedDialog(tk.Toplevel):
         self.destroy()
 
 
-# ------------------------------------------------------------
-# NYT-style letter tile
-# ------------------------------------------------------------
 class LetterTile(tk.Frame):
-    """Typing is keyboard-only: focus starts on the first tile and `on_change` (advance/backspace) moves it tile to tile, row to row. Clicking the tile is reserved for choosing its clue color and cycles absent (grey, the default) -> present (yellow) -> correct (green). `on_state_change` fires on every mutation (typing, backspace, color click, programmatic clear) and is what the app hooks into to trigger a live re-filter."""
-
-    SIZE = 56
-    CYCLE = ["absent", "present", "correct"]
-
+    # Typing is keyboard-only: focus starts on the first tile and `on_change` (advance/backspace) moves it tile to tile, row to row.
+    # Clicking the tile is reserved for choosing its clue color and cycles absent (grey, the default) -> present (yellow) -> correct (green).
+    # `on_state_change` fires on every mutation (typing, backspace, color click, programmatic clear) and is what the app hooks into to trigger a live re-filter.
     def __init__(self, parent, on_change=None, on_state_change=None):
-        super().__init__(
-            parent, width=self.SIZE, height=self.SIZE, takefocus=1,
-            highlightthickness=2, highlightbackground=TILE_BORDER,
-            highlightcolor=TILE_BORDER,
-        )
+        super().__init__(parent, width=56, height=56, takefocus=1, highlightthickness=2, highlightbackground=TILE_BORDER, highlightcolor=TILE_BORDER)
         self.pack_propagate(False)
         self.on_change = on_change
         self.on_state_change = on_state_change
@@ -201,7 +178,7 @@ class LetterTile(tk.Frame):
 
         self._redraw()
 
-    # -- interactive editing -----------------------------------------
+    # interactive editing -----------------------------------------
     def _on_key(self, event):
         if event.keysym == "Tab":
             return  # let normal focus traversal happen
@@ -224,14 +201,14 @@ class LetterTile(tk.Frame):
     def _cycle_state(self, event=None):
         if not self.letter:
             return "break"
-        current = self.CYCLE.index(self.state) if self.state in self.CYCLE else -1
-        self.state = self.CYCLE[(current + 1) % len(self.CYCLE)]
+        current = CYCLE.index(self.state) if self.state in CYCLE else -1
+        self.state = CYCLE[(current + 1) % len(CYCLE)]
         self._redraw()
         if self.on_state_change:
             self.on_state_change()
         return "break"
 
-    # -- programmatic control ------------------------------------------
+    # programmatic control ------------------------------------------
     def set_letter(self, letter):
         self.letter = letter
         if letter and self.state == "empty":
@@ -261,7 +238,9 @@ class LetterTile(tk.Frame):
 
 
 class WordleBoard(ttk.Frame):
-    """A grid of guess rows, each MAX_GUESSES x WORD_LENGTH tiles. Typing auto-advances within a row and rolls over into the next row's first tile; backspace on an empty tile rolls back into the previous row's last tile. `on_change` is called with no arguments whenever ANY tile in the board changes -- the app uses it to trigger a debounced re-filter."""
+    # A grid of guess rows, each MAX_GUESSES x WORD_LENGTH tiles.
+    # Typing auto-advances within a row and rolls over into the next row's first tile; backspace on an empty tile rolls back into the previous row's last tile.
+    # `on_change` is called with no arguments whenever ANY tile in the board changes -- the app uses it to trigger a debounced re-filter.
 
     def __init__(self, parent, on_change=None):
         super().__init__(parent)
@@ -272,11 +251,7 @@ class WordleBoard(ttk.Frame):
             row_frame.pack(pady=3)
             row_tiles = []
             for c in range(WORD_LENGTH):
-                tile = LetterTile(
-                    row_frame,
-                    on_change=self._make_on_change(r, c),
-                    on_state_change=self.on_change,
-                )
+                tile = LetterTile(row_frame, on_change=self._make_on_change(r, c), on_state_change=self.on_change)
                 tile.grid(row=0, column=c, padx=3)
                 row_tiles.append(tile)
             self.rows.append(row_tiles)
@@ -306,16 +281,16 @@ class WordleBoard(ttk.Frame):
         self.focus_first_tile()
 
 
-class WordleFilterApp:
-    """Tkinter UI for the WORDL Filter."""
-
+class FilterUI:
     def __init__(self, root):
         self.root = root
         self.root.title("WORDL Filter")
         self.root.resizable(False, False)
         self.root.configure(bg=COLOR_BG)
 
-        self.wf = WordleFilter(WORDS)
+        apply_dark_titlebar(root)
+
+        self.wf = Filter(WORDS)
         self._filter_job = None  # pending root.after() id, if any
 
         self._setup_style()
@@ -325,9 +300,7 @@ class WordleFilterApp:
 
         self.board.focus_first_tile()
 
-    # ------------------------------------------------------------
     # Styling
-    # ------------------------------------------------------------
     def _setup_style(self):
         style = ttk.Style(self.root)
         style.theme_use("clam")
@@ -345,9 +318,7 @@ class WordleFilterApp:
         style.configure("Count.TLabel", background=COLOR_BG, foreground=COLOR_STATUS_TEXT,
                          font=("Segoe UI", 9, "bold"))
 
-    # ------------------------------------------------------------
     # UI
-    # ------------------------------------------------------------
     def _build_board(self):
         board_frame = ttk.Frame(self.root, padding=10)
         board_frame.pack()
@@ -366,18 +337,13 @@ class WordleFilterApp:
         self.count_label = ttk.Label(result, text="0 possible words", style="Count.TLabel")
         self.count_label.pack(anchor="w", pady=(0, 5))
 
-        self.text_result = scrolledtext.ScrolledText(
-            result, width=60, height=14, relief="flat", font=RESULT_FONT,
-            bg=COLOR_BG_LIGHT, fg=COLOR_FG, insertbackground=COLOR_FG,
-            selectbackground=COLOR_DARK,
-        )
+        self.text_result = scrolledtext.ScrolledText(result, width=60, height=14, relief="flat", font=RESULT_FONT, bg=COLOR_BG_LIGHT, fg=COLOR_FG, insertbackground=COLOR_FG, selectbackground=COLOR_DARK)
         self.text_result.pack(fill="both", expand=True)
 
-    # ------------------------------------------------------------
+    
     # Live filtering
-    # ------------------------------------------------------------
     def _schedule_filter(self):
-        """Debounced auto-filter: cancel any pending run and schedule a fresh one shortly after the most recent tile change. A burst of quick edits collapses into a single recompute instead of one per keystroke."""
+        # Debounced auto-filter: cancel any pending run and schedule a fresh one shortly after the most recent tile change. A burst of quick edits collapses into a single recompute instead of one per keystroke.
         if self._filter_job is not None:
             self.root.after_cancel(self._filter_job)
         self._filter_job = self.root.after(FILTER_DEBOUNCE_MS, self._run_filter_now)
@@ -404,7 +370,7 @@ class WordleFilterApp:
 
     @staticmethod
     def _format_results(words):
-        """Lays the word list out in aligned, uppercase columns."""
+        # Lays the word list out in aligned, uppercase columns
         if not words:
             return "No matches."
         upper = [w.upper() for w in words]
@@ -421,10 +387,50 @@ class WordleFilterApp:
         self.count_label.config(text="0 possible words")
         self.text_result.delete("1.0", tk.END)
 
+# Windows-only visual fixes tkinter doesn't handle by itself: DPI awareness (fixes
+# blurry/blocky text on HiDPI displays) and a dark title bar to match the theme.
+# Both are no-ops on non-Windows.
+def _is_win() -> bool:
+    return sys.platform == "win32"
+
+def enable_dpi_awareness() -> None:
+    if not _is_win():
+        return
+    try:
+        ctypes.windll.shcore.SetProcessDpiAwareness(1)  # PROCESS_SYSTEM_DPI_AWARE
+    except Exception:
+        try:
+            ctypes.windll.user32.SetProcessDPIAware()  # fallback for older Windows
+        except Exception:
+            pass
+
+def apply_dark_titlebar(window) -> None:
+    if not _is_win():
+        return
+    window.update_idletasks()
+    hwnd = ctypes.windll.user32.GetParent(window.winfo_id())
+    for attribute in (20, 19):  # DWMWA_USE_IMMERSIVE_DARK_MODE: 20 (Win10 2004+), 19 (older)
+        value = ctypes.c_int(1)
+        result = ctypes.windll.dwmapi.DwmSetWindowAttribute(hwnd, attribute, ctypes.byref(value), ctypes.sizeof(value))
+        if result == 0:
+            break
+
+
+def force_dark_titlebar(window) -> None:
+        if not _is_win():
+            return
+        #window.update()
+        try:
+            hwnd = ctypes.windll.user32.GetParent(window.winfo_id())
+            rendering_policy = ctypes.c_int(2)
+            ctypes.windll.dwmapi.DwmSetWindowAttribute(hwnd, 20, ctypes.byref(rendering_policy), ctypes.sizeof(rendering_policy))
+        except Exception:
+            pass
 
 def main():
+    enable_dpi_awareness()
     root = tk.Tk()
-    WordleFilterApp(root)
+    FilterUI(root)
     root.mainloop()
 
 
