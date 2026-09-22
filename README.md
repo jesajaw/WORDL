@@ -6,17 +6,34 @@ If you have ever watched 3Blue1Brown's brilliant video, [Solving Wordle using in
 
 That is why I put together this simple script - to help guide you toward the solution and make solving the puzzle a breeze!
 
-# Features
+---
 
-- Filters a 5-letter word list down to the words still possible (based on clues)
-- 3 switchable color themes (Dark / Purple, Dark / Blue, Black / White)
+## 🚀 Features
 
-# Files
+* **Interactive Wordle Board**: 6-row by 5-letter visual grid with custom letter tiles.
+* **Tile State Feedback**:
+  * ⬛ **Absent**: Letter is not in the word.
+  * 🟨 **Present**: Letter exists in the target word, but in a different position.
+  * 🟩 **Correct**: Letter is fixed in the exact position.
+* **Debounced Live Filtering**: Re-computes remaining word possibilities dynamically in the background
+* **switchable color themes:** (Dark / Purple, Dark / Blue, Black / White)
 
-- `wordle.py` — filtering logic + Tkinter UI
-- `wordlist.py` — the 5-letter word list, kept separate so it's easy to swap out or extend
+## 📁 Project Structure
 
-# Run
+WORDL/
+├── src/
+│   ├── __init__.py
+│   ├── config.py         # Theme colors, dimensions, fonts, and settings
+│   ├── filter.py         # Wordle constraint evaluation & filter engine
+│   ├── ui.py             # Tkinter widgets (Board, LetterTile, FilterUI, Dialogs)
+│   └── wordlist.py       # Word dictionary loader and data management
+├── .gitignore
+├── LICENSE
+├── main.py               # Application entry point
+├── README.md             # Project documentation
+└── requirements.txt      # Project dependencies
+
+## 💻 Usage
 Once you have cloned the repository to your local machine, simply navigate to the correct folder in your terminal and run the script using:
 ```
 python wordle.py
