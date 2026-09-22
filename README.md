@@ -11,12 +11,12 @@ That is why I put together this simple script - to help guide you toward the sol
 - Filters a 5-letter word list down to the words still possible (based on clues)
 - 3 switchable color themes (Dark / Purple, Dark / Blue, Black / White)
 
-## Files
+# Files
 
 - `wordle.py` — filtering logic + Tkinter UI
 - `wordlist.py` — the 5-letter word list, kept separate so it's easy to swap out or extend
 
-## Run
+# Run
 Once you have cloned the repository to your local machine, simply navigate to the correct folder in your terminal and run the script using:
 ```
 python wordle.py

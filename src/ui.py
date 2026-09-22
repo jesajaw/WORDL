@@ -1,128 +1,18 @@
-"""
-Wordl Filter
--------------
-UI that filters a 5-letter word list down to the words that are still possible (2025), based on the clues Wordle gives you.
-
-Clue entry is a tile board that looks like NYT Wordle:
- - type letters on the keyboard; focus starts on the first tile and auto-advances tile by tile, row by row, as you type
- - click a tile's letter to cycle its color/clue: grey:absent, default || yellow: present, not this position || green: correct
-You can fill in as many guess rows as you've actually played; filter re-runs automatically after every change.
-
-
-Clue handling
--------------
-A "grey" letter only excludes a word if that letter isn't *also* marked yellow or green somewhere else (any row, any column). This covers repeated-letter cases correctly (e.g. the answer has one "e", you guessed two: one came back green, the other grey).
-"""
-
 import tkinter as tk
 from tkinter import ttk, scrolledtext
 
-from wordlist import WORDS
-
-import sys
 import ctypes
+import sys
 
-WORD_LENGTH = 5
-MAX_GUESSES = 6
-
-CYCLE = ["absent", "present", "correct"]
-
-FILTER_DEBOUNCE_MS = 150
-RESULT_COLUMNS = 6
-RESULT_FONT = ("Consolas", 11)
-
-_SCHEMES = {
-    "dark_purple": dict(
-        BG="#1e1e24", BG_LIGHT="#2a2a33", FG="#e0dff0",
-        ACCENT="#9b59d9", ACCENT_DARK="#6c3fa0", STATUS_TEXT="#c9a6f5",
-    ),
-    "dark_blue": dict(
-        BG="#1e1e24", BG_LIGHT="#2a2a33", FG="#e0dff0",
-        ACCENT="#4a90d9", ACCENT_DARK="#2f5f9e", STATUS_TEXT="#a6c9f5",
-    ),
-    "black_white": dict(
-        BG="#000000", BG_LIGHT="#1a1a1a", FG="#ffffff",
-        ACCENT="#ffffff", ACCENT_DARK="#808080", STATUS_TEXT="#d9d9d9",
-    ),
-}
-# Color schemes
-_active = _SCHEMES["dark_purple"]
-
-COLOR_BG = _active["BG"]
-COLOR_BG_LIGHT = _active["BG_LIGHT"]
-COLOR_FG = _active["FG"]
-COLOR = _active["ACCENT"]
-COLOR_DARK = _active["ACCENT_DARK"]
-COLOR_STATUS_TEXT = _active["STATUS_TEXT"]
+from . import parameters
+from . import Filter
 
 
-# Tile colors
-TILE_ABSENT = "#3a3a3c"
-TILE_PRESENT = "#b59f3b"
-TILE_CORRECT = "#538d4e"
-TILE_BORDER = "#565758"
-TILE_TEXT = "#ffffff"
-
-
-class Filter:
-    # Filters a word list based on Wordle-style clues
-    def __init__(self, wordlist, word_length=WORD_LENGTH):
-        self.word_length = word_length
-        self.wordlist = [
-            w.strip().lower() for w in wordlist
-            if len(w.strip()) == word_length
-        ]
-        self.reset()
-
-    def reset(self):
-        # Clears all clues
-        self.absent_letters = set()   # grey: not in the word at all
-        self.present_letters = {}     # yellow: letter -> {excluded positions}
-        self.fixed_positions = {}     # green: position -> letter
-
-    def add_absent(self, letters):
-        self.absent_letters.update(letters)
-
-    def add_present(self, letter, position):
-        # `position` is 0-indexed. The letter is known to be in the word, just not at this position.
-        self.present_letters.setdefault(letter, set()).add(position)
-
-    def add_fixed(self, position, letter):
-        self.fixed_positions[position] = letter
-
-    def _matches(self, word):
-        # green: letter must sit exactly here
-        for pos, letter in self.fixed_positions.items():
-            if pos >= len(word) or word[pos] != letter:
-                return False
-
-        # yellow: letter must be in the word, just not at these positions
-        for letter, excluded_positions in self.present_letters.items():
-            if letter not in word:
-                return False
-            for pos in excluded_positions:
-                if pos < len(word) and word[pos] == letter:
-                    return False
-
-        # grey: letter must not appear at all, UNLESS it's also confirmed present elsewhere (duplicate-letter case)
-        known_present = set(self.fixed_positions.values()) | set(self.present_letters)
-        for letter in self.absent_letters:
-            if letter in known_present:
-                continue
-            if letter in word:
-                return False
-        return True
-
-    def filter(self):
-        return [w for w in self.wordlist if self._matches(w)]
-
-
-# Modal theme popups styled to match the app's color theme
 class ThemedDialog(tk.Toplevel):
     def __init__(self, parent, title, message, buttons):
         super().__init__(parent)
         self.title(title)
-        self.configure(bg=COLOR_BG)
+        self.configure(bg=parameters.COLOR_BG)
         self.resizable(False, False)
         self.transient(parent)
         self.grab_set()
@@ -156,22 +46,17 @@ class ThemedDialog(tk.Toplevel):
 
 
 class LetterTile(tk.Frame):
-    # Typing is keyboard-only: focus starts on the first tile and `on_change` (advance/backspace) moves it tile to tile, row to row.
-    # Clicking the tile is reserved for choosing its clue color and cycles absent (grey, the default) -> present (yellow) -> correct (green).
-    # `on_state_change` fires on every mutation (typing, backspace, color click, programmatic clear) and is what the app hooks into to trigger a live re-filter.
     def __init__(self, parent, on_change=None, on_state_change=None):
-        super().__init__(parent, width=56, height=56, takefocus=1, highlightthickness=2, highlightbackground=TILE_BORDER, highlightcolor=TILE_BORDER)
+        super().__init__(parent, width=56, height=56, takefocus=1, highlightthickness=2, highlightbackground=parameters.TILE_BORDER, highlightcolor=parameters.TILE_BORDER)
         self.pack_propagate(False)
         self.on_change = on_change
         self.on_state_change = on_state_change
         self.letter = ""
-        self.state = "empty"  # empty -> absent -> present -> correct
+        self.state = "empty"
 
-        self.label = tk.Label(self, text="", font=("Helvetica", 22, "bold"), fg=TILE_TEXT)
+        self.label = tk.Label(self, text="", font=("Helvetica", 22, "bold"), fg=parameters.TILE_TEXT)
         self.label.pack(expand=True, fill="both")
 
-        # Click cycles the color (this is the only click behaviour --
-        # focus is moved by typing, not by clicking).
         self.bind("<Button-1>", self._cycle_state)
         self.label.bind("<Button-1>", self._cycle_state)
         self.bind("<Key>", self._on_key)
@@ -181,7 +66,7 @@ class LetterTile(tk.Frame):
     # interactive editing -----------------------------------------
     def _on_key(self, event):
         if event.keysym == "Tab":
-            return  # let normal focus traversal happen
+            return
         if event.keysym in ("BackSpace", "Delete"):
             had_letter = bool(self.letter)
             self.set_letter("")
@@ -201,8 +86,8 @@ class LetterTile(tk.Frame):
     def _cycle_state(self, event=None):
         if not self.letter:
             return "break"
-        current = CYCLE.index(self.state) if self.state in CYCLE else -1
-        self.state = CYCLE[(current + 1) % len(CYCLE)]
+        current = parameters.CYCLE.index(self.state) if self.state in parameters.CYCLE else -1
+        self.state = parameters.CYCLE[(current + 1) % len(parameters.CYCLE)]
         self._redraw()
         if self.on_state_change:
             self.on_state_change()
@@ -228,29 +113,25 @@ class LetterTile(tk.Frame):
 
     def _redraw(self):
         bg = {
-            "empty": COLOR_BG,
-            "absent": TILE_ABSENT,
-            "present": TILE_PRESENT,
-            "correct": TILE_CORRECT,
+            "empty": parameters.COLOR_BG,
+            "absent": parameters.TILE_ABSENT,
+            "present": parameters.TILE_PRESENT,
+            "correct": parameters.TILE_CORRECT,
         }[self.state]
         self.configure(bg=bg)
         self.label.configure(bg=bg, text=self.letter)
 
 
-class WordleBoard(ttk.Frame):
-    # A grid of guess rows, each MAX_GUESSES x WORD_LENGTH tiles.
-    # Typing auto-advances within a row and rolls over into the next row's first tile; backspace on an empty tile rolls back into the previous row's last tile.
-    # `on_change` is called with no arguments whenever ANY tile in the board changes -- the app uses it to trigger a debounced re-filter.
-
+class Board(ttk.Frame):
     def __init__(self, parent, on_change=None):
         super().__init__(parent)
         self.on_change = on_change
         self.rows = []
-        for r in range(MAX_GUESSES):
+        for r in range(parameters.MAX_GUESSES):
             row_frame = ttk.Frame(self)
             row_frame.pack(pady=3)
             row_tiles = []
-            for c in range(WORD_LENGTH):
+            for c in range(parameters.WORD_LENGTH):
                 tile = LetterTile(row_frame, on_change=self._make_on_change(r, c), on_state_change=self.on_change)
                 tile.grid(row=0, column=c, padx=3)
                 row_tiles.append(tile)
@@ -259,16 +140,16 @@ class WordleBoard(ttk.Frame):
     def _make_on_change(self, r, c):
         def handler(tile, advance=False, backspace=False):
             if advance:
-                if c + 1 < WORD_LENGTH:
+                if c + 1 < parameters.WORD_LENGTH:
                     self.rows[r][c + 1].focus_set()
-                elif r + 1 < MAX_GUESSES:
+                elif r + 1 < parameters.MAX_GUESSES:
                     self.rows[r + 1][0].focus_set()
             elif backspace:
                 if c - 1 >= 0:
                     self.rows[r][c - 1].clear()
                     self.rows[r][c - 1].focus_set()
                 elif r - 1 >= 0:
-                    self.rows[r - 1][WORD_LENGTH - 1].focus_set()
+                    self.rows[r - 1][parameters.WORD_LENGTH - 1].focus_set()
         return handler
 
     def focus_first_tile(self):
@@ -286,12 +167,12 @@ class FilterUI:
         self.root = root
         self.root.title("WORDL Filter")
         self.root.resizable(False, False)
-        self.root.configure(bg=COLOR_BG)
+        self.root.configure(bg=parameters.COLOR_BG)
 
         apply_dark_titlebar(root)
 
-        self.wf = Filter(WORDS)
-        self._filter_job = None  # pending root.after() id, if any
+        self.wf = Filter()
+        self._filter_job = None
 
         self._setup_style()
         self._build_board()
@@ -299,30 +180,31 @@ class FilterUI:
         self._build_result_area()
 
         self.board.focus_first_tile()
+        self._run_filter_now()
 
     # Styling
     def _setup_style(self):
         style = ttk.Style(self.root)
         style.theme_use("clam")
 
-        style.configure(".", background=COLOR_BG, foreground=COLOR_FG, font=("Segoe UI", 9))
-        style.configure("TFrame", background=COLOR_BG)
-        style.configure("TLabel", background=COLOR_BG, foreground=COLOR_FG)
+        style.configure(".", background=parameters.COLOR_BG, foreground=parameters.COLOR_FG, font=("Segoe UI", 9))
+        style.configure("TFrame", background=parameters.COLOR_BG)
+        style.configure("TLabel", background=parameters.COLOR_BG, foreground=parameters.COLOR_FG)
 
-        style.configure("TButton", background=COLOR_BG_LIGHT, foreground=COLOR_FG,
-                         bordercolor=COLOR_DARK, focusthickness=1, padding=6)
+        style.configure("TButton", background=parameters.COLOR_BG_LIGHT, foreground=parameters.COLOR_FG,
+                         bordercolor=parameters.COLOR_DARK, focusthickness=1, padding=6)
         style.map("TButton",
-                  background=[("active", COLOR_DARK), ("pressed", COLOR)],
-                  foreground=[("active", COLOR_FG)])
+                  background=[("active", parameters.COLOR_DARK), ("pressed", parameters.COLOR)],
+                  foreground=[("active", parameters.COLOR_FG)])
 
-        style.configure("Count.TLabel", background=COLOR_BG, foreground=COLOR_STATUS_TEXT,
+        style.configure("Count.TLabel", background=parameters.COLOR_BG, foreground=parameters.COLOR_STATUS_TEXT,
                          font=("Segoe UI", 9, "bold"))
 
     # UI
     def _build_board(self):
         board_frame = ttk.Frame(self.root, padding=10)
         board_frame.pack()
-        self.board = WordleBoard(board_frame, on_change=self._schedule_filter)
+        self.board = Board(board_frame, on_change=self._schedule_filter)
         self.board.pack()
 
     def _build_actions(self):
@@ -337,7 +219,7 @@ class FilterUI:
         self.count_label = ttk.Label(result, text="0 possible words", style="Count.TLabel")
         self.count_label.pack(anchor="w", pady=(0, 5))
 
-        self.text_result = scrolledtext.ScrolledText(result, width=60, height=14, relief="flat", font=RESULT_FONT, bg=COLOR_BG_LIGHT, fg=COLOR_FG, insertbackground=COLOR_FG, selectbackground=COLOR_DARK)
+        self.text_result = scrolledtext.ScrolledText(result, width=60, height=14, relief="flat", font=parameters.RESULT_FONT, bg=parameters.COLOR_BG_LIGHT, fg=parameters.COLOR_FG, insertbackground=parameters.COLOR_FG, selectbackground=parameters.COLOR_DARK)
         self.text_result.pack(fill="both", expand=True)
 
     
@@ -346,7 +228,7 @@ class FilterUI:
         # Debounced auto-filter: cancel any pending run and schedule a fresh one shortly after the most recent tile change. A burst of quick edits collapses into a single recompute instead of one per keystroke.
         if self._filter_job is not None:
             self.root.after_cancel(self._filter_job)
-        self._filter_job = self.root.after(FILTER_DEBOUNCE_MS, self._run_filter_now)
+        self._filter_job = self.root.after(parameters.FILTER_DEBOUNCE_MS, self._run_filter_now)
 
     def _run_filter_now(self):
         self._filter_job = None
@@ -376,16 +258,15 @@ class FilterUI:
         upper = [w.upper() for w in words]
         col_width = max(len(w) for w in upper) + 3
         lines = []
-        for i in range(0, len(upper), RESULT_COLUMNS):
-            row = upper[i:i + RESULT_COLUMNS]
+        for i in range(0, len(upper), parameters.RESULT_COLUMNS):
+            row = upper[i:i + parameters.RESULT_COLUMNS]
             lines.append("".join(w.ljust(col_width) for w in row))
         return "\n".join(lines)
 
     def clear_board(self):
         self.board.clear()
         self.wf.reset()
-        self.count_label.config(text="0 possible words")
-        self.text_result.delete("1.0", tk.END)
+        self._run_filter_now()
 
 # Windows-only visual fixes tkinter doesn't handle by itself: DPI awareness (fixes
 # blurry/blocky text on HiDPI displays) and a dark title bar to match the theme.
@@ -419,20 +300,9 @@ def apply_dark_titlebar(window) -> None:
 def force_dark_titlebar(window) -> None:
         if not _is_win():
             return
-        #window.update()
         try:
             hwnd = ctypes.windll.user32.GetParent(window.winfo_id())
             rendering_policy = ctypes.c_int(2)
             ctypes.windll.dwmapi.DwmSetWindowAttribute(hwnd, 20, ctypes.byref(rendering_policy), ctypes.sizeof(rendering_policy))
         except Exception:
             pass
-
-def main():
-    enable_dpi_awareness()
-    root = tk.Tk()
-    FilterUI(root)
-    root.mainloop()
-
-
-if __name__ == "__main__":
-    main()
