@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, scrolledtext
+from tkinter import ttk
 
 import ctypes
 import sys
@@ -199,6 +199,25 @@ class FilterUI:
 
         style.configure("Count.TLabel", background=parameters.COLOR_BG, foreground=parameters.COLOR_STATUS_TEXT,
                          font=("Segoe UI", 9, "bold"))
+        style.configure(
+            "Vertical.TScrollbar",
+            gripcount=0,
+            background=parameters.COLOR_BG_LIGHT,
+            darkcolor=parameters.COLOR_BG,
+            lightcolor=parameters.COLOR_BG,
+            troughcolor=parameters.COLOR_BG,
+            bordercolor=parameters.COLOR_BG,
+            arrowcolor=parameters.COLOR_FG,
+        )
+
+        style.map("TButton", background=[("active", parameters.COLOR_DARK), ("pressed", parameters.COLOR),], foreground=[("active", parameters.COLOR_FG)])
+
+        style.configure("Count.TLabel", background=parameters.COLOR_BG, foreground=parameters.COLOR_STATUS_TEXT, font=("Segoe UI", 9, "bold"))
+
+        # arrows out 
+        style.layout("Vertical.TScrollbar", [("Vertical.Scrollbar.trough", {"sticky": "ns", "children": [("Vertical.Scrollbar.thumb", {"expand": "1", "sticky": "ns"})],},)],)
+        style.configure("Vertical.TScrollbar", width=20, background=parameters.COLOR, darkcolor=parameters.COLOR, lightcolor=parameters.COLOR, bordercolor=parameters.COLOR_BG, troughcolor=parameters.COLOR_BG)
+        style.map("Vertical.TScrollbar", background=[("active", parameters.COLOR), ("pressed", parameters.COLOR)], darkcolor=[("active", parameters.COLOR), ("pressed", parameters.COLOR)], lightcolor=[("active", parameters.COLOR), ("pressed", parameters.COLOR)])
 
     # UI
     def _build_board(self):
@@ -219,8 +238,26 @@ class FilterUI:
         self.count_label = ttk.Label(result, text="0 possible words", style="Count.TLabel")
         self.count_label.pack(anchor="w", pady=(0, 5))
 
-        self.text_result = scrolledtext.ScrolledText(result, width=60, height=14, relief="flat", font=parameters.RESULT_FONT, bg=parameters.COLOR_BG_LIGHT, fg=parameters.COLOR_FG, insertbackground=parameters.COLOR_FG, selectbackground=parameters.COLOR_DARK)
-        self.text_result.pack(fill="both", expand=True)
+        text_container = ttk.Frame(result).pack(fill="both", expand=True)
+
+        self.scrollbar = ttk.Scrollbar(text_container, orient="vertical")
+        self.scrollbar.pack(side="right", fill="y")
+        self.text_result = tk.Text(
+            text_container,
+            width=60,
+            height=14,
+            relief="flat",
+            font=parameters.RESULT_FONT,
+            bg=parameters.COLOR_BG_LIGHT,
+            fg=parameters.COLOR_FG,
+            insertbackground=parameters.COLOR_FG,
+            selectbackground=parameters.COLOR_DARK,
+            yscrollcommand=self.scrollbar.set,
+            state="disabled"
+        )
+        self.text_result.pack(side="left", fill="both", expand=True)
+
+        self.scrollbar.config(command=self.text_result.yview)
 
     
     # Live filtering
@@ -247,8 +284,10 @@ class FilterUI:
 
         results = self.wf.filter()
         self.count_label.config(text=f"{len(results)} possible word(s)")
+        self.text_result.config(state="normal")
         self.text_result.delete("1.0", tk.END)
         self.text_result.insert(tk.END, self._format_results(results))
+        self.text_result.config(state="disabled")
 
     @staticmethod
     def _format_results(words):
@@ -295,7 +334,6 @@ def apply_dark_titlebar(window) -> None:
         result = ctypes.windll.dwmapi.DwmSetWindowAttribute(hwnd, attribute, ctypes.byref(value), ctypes.sizeof(value))
         if result == 0:
             break
-
 
 def force_dark_titlebar(window) -> None:
         if not _is_win():

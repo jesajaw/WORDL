@@ -6,7 +6,7 @@ class parameters:
     CYCLE = ["absent", "present", "correct"]
 
     FILTER_DEBOUNCE_MS = 150
-    RESULT_COLUMNS = 6
+    RESULT_COLUMNS = 7
     RESULT_FONT = ("Consolas", 11)
 
     _SCHEMES = {
