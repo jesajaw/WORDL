@@ -24,15 +24,15 @@ That is why I put together this simple script - to help guide you toward the sol
 WORDL/
 ├── src/
 │   ├── __init__.py
-│   ├── config.py         # Theme colors, dimensions, fonts, and settings
-│   ├── filter.py         # Wordle constraint evaluation & filter engine
-│   ├── ui.py             # Tkinter widgets (Board, LetterTile, FilterUI, Dialogs)
-│   └── wordlist.py       # Word dictionary loader and data management
+│   ├── config.py     # theme colors, dimensions, fonts, and settings
+│   ├── filter.py     # Wordle constraint evaluation & filter engine
+│   ├── ui.py         # Tkinter widgets
+│   └── wordlist.py   # words
 ├── .gitignore
 ├── LICENSE
-├── main.py               # Application entry point
-├── README.md             # Project documentation
-└── requirements.txt      # Project dependencies
+├── main.py     # Application entry point
+├── README.md   # ... readme
+└── requirements.txt  # dependencies ... pyhton
 ```
 
 ## 💻 Usage
