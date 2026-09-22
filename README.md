@@ -18,6 +18,8 @@ That is why I put together this simple script - to help guide you toward the sol
 * **Debounced Live Filtering**: Re-computes remaining word possibilities dynamically in the background
 * **switchable color themes:** (Dark / Purple, Dark / Blue, Black / White)
 
+---
+
 ## 📁 Project Structure
 
 ```text
@@ -34,6 +36,8 @@ WORDL/
 ├── README.md   # ... readme
 └── requirements.txt  # dependencies ... pyhton
 ```
+
+---
 
 ## 💻 Usage
 Once you have cloned the repository to your local machine, simply navigate to the correct folder in your terminal and run the script using:
