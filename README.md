@@ -20,6 +20,7 @@ That is why I put together this simple script - to help guide you toward the sol
 
 ## 📁 Project Structure
 
+```text
 WORDL/
 ├── src/
 │   ├── __init__.py
@@ -32,6 +33,7 @@ WORDL/
 ├── main.py               # Application entry point
 ├── README.md             # Project documentation
 └── requirements.txt      # Project dependencies
+```
 
 ## 💻 Usage
 Once you have cloned the repository to your local machine, simply navigate to the correct folder in your terminal and run the script using:
