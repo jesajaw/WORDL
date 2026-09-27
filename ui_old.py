@@ -4,8 +4,8 @@ from tkinter import ttk
 import ctypes
 import sys
 
-from . import parameters
-from . import Filter
+from .src import parameters
+from .src import Filter
 
 
 class ThemedDialog(tk.Toplevel):

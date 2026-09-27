@@ -1,6 +1,6 @@
 # About
 
-Wordle is a fantastic daily puzzle game, and while there are many versions available today, the **New York Times** edition remains a classic favorite [[NWT WORDL](https://www.nytimes.com/games/wordle/index.html)].
+Wordle is a fantastic daily puzzle game, and while there are many versions available today, the **New York Times** edition remains a classic favorite [[NYT WORDL](https://www.nytimes.com/games/wordle/index.html)].
 
 If you have ever watched 3Blue1Brown's brilliant video, [Solving Wordle using information theory](https://www.youtube.com/watch?v=v68zYyaEmEA), you know how fascinating the strategy behind optimal guessing can be. However, sometimes you just need a little extra assistance cracking the daily puzzle.
 
@@ -15,8 +15,8 @@ That is why I put together this simple script - to help guide you toward the sol
   * ⬛ **Absent**: Letter is not in the word.
   * 🟨 **Present**: Letter exists in the target word, but in a different position.
   * 🟩 **Correct**: Letter is fixed in the exact position.
-* **Debounced Live Filtering**: Re-computes remaining word possibilities dynamically in the background
-* **switchable color themes:** (Dark / Purple, Dark / Blue, Black / White)
+* **Live filtering**: recomputes the list of remaining possible words after every change.
+* **Color theme**: dark theme defined in `src/config.py`, with two additional presets (`dark_blue`, `black_white`) ready to switch to by changing `_active` in that file.
 
 ---
 
@@ -26,24 +26,34 @@ That is why I put together this simple script - to help guide you toward the sol
 WORDL/
 ├── src/
 │   ├── __init__.py
-│   ├── config.py     # theme colors, dimensions, fonts, and settings
-│   ├── filter.py     # Wordle constraint evaluation & filter engine
-│   ├── ui.py         # Tkinter widgets
-│   └── wordlist.py   # words
+│   ├── app.py         # Dear PyGui UI (current front end) + entry point (run())
+│   ├── config.py       # theme colors, dimensions, and settings
+│   ├── filter.py        # Wordle constraint evaluation & filter engine
+│   ├── wordlist.py       # word list
+│   └── ui_old.py          # legacy Tkinter UI, kept for reference, not used
 ├── .gitignore
 ├── LICENSE
 ├── main.py     # Application entry point
 ├── README.md   # ... readme
-└── requirements.txt  # dependencies ... pyhton
+└── requirements.txt  # dependencies
 ```
 
 ---
 
 ## 💻 Usage
-Once you have cloned the repository to your local machine, simply navigate to the correct folder in your terminal and run the script using:
+
+Install the dependency, then run the app from the project root:
+
 ```
-python wordle.py
+pip install -r requirements.txt
+python main.py
 ```
+
+Clue entry is a tile board that looks like NYT Wordle:
+- type letters on the keyboard; focus starts on the first tile and auto-advances tile by tile, row by row, as you type
+- click a tile (or press Space on the focused tile) to cycle its color/clue: grey = absent, yellow = present (wrong position), green = correct
+
+You can fill in as many guess rows as you've actually played; the filter re-runs automatically after every change.
 
 Clue handling
 -------------
@@ -51,4 +61,4 @@ A "grey" letter only excludes a word if that letter isn't *also* marked yellow o
 
 Live filtering
 ---------------
-Every tile edit schedules a filter run via `root.after(...)`; a new edit cancels the previous *scheduled* run before it fires, so a burst of fast edits (typing a whole row, clicking several colors) collapses into a single recompute instead of one per keystroke.
+Every tile edit runs the filter immediately. The word list (~2,300 five-letter words) is small enough that this is instant, so no debouncing is needed in the current (Dear PyGui) UI — that machinery still exists in the legacy Tkinter UI (`src/ui_old.py`) for reference.

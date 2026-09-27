@@ -14,15 +14,10 @@ Clue handling
 A "grey" letter only excludes a word if that letter isn't *also* marked yellow or green somewhere else (any row, any column). This covers repeated-letter cases correctly (e.g. the answer has one "e", you guessed two: one came back green, the other grey).
 """
 
-import tkinter as tk
-from src import ui
+from src import app
 
 def main():
-    ui.enable_dpi_awareness()
-    root = tk.Tk()
-    ui.FilterUI(root)
-    root.mainloop()
-
+    app.run()
 
 if __name__ == "__main__":
     main()

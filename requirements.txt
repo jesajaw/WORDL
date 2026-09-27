@@ -1,2 +1,3 @@
-# Cross-platform
-python>=3.5
+# WORDL Filter dependencies
+# Python 3.9+ required.
+dearpygui>=1.10,<2.0

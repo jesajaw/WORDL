@@ -5,8 +5,10 @@ class parameters:
 
     CYCLE = ["absent", "present", "correct"]
 
-    FILTER_DEBOUNCE_MS = 150
     RESULT_COLUMNS = 7
+
+    # Only used by the legacy Tkinter UI (src/ui_old.py), kept for reference.
+    FILTER_DEBOUNCE_MS = 150
     RESULT_FONT = ("Consolas", 11)
 
     _SCHEMES = {
