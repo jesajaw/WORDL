@@ -16,7 +16,7 @@ That is why I put together this simple script -- to help guide you toward the so
   * 🟨 **Present**: Letter exists in the target word, but in a different position.
   * 🟩 **Correct**: Letter is fixed in the exact position.
 * **Live filtering**: recomputes the list of remaining possible words after every change.
-* **Color theme**: dark theme defined in `src/config.py`, with two additional presets (`dark_blue`, `black_white`) ready to switch to by changing `_active` in that file.
+* **Color theme**: dark theme defined in `src/theme.py`, with two additional presets (`dark_purple`, `black_white`) ready to switch to by changing `_active` in that file.
 
 ---
 

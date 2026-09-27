@@ -12,8 +12,6 @@ class parameters:
 
     CYCLE = ["absent", "present", "correct"]
 
-    RESULT_COLUMNS = 8
-
     # Tile colors
     TILE_ABSENT = "#3a3a3c"
     TILE_PRESENT = "#b59f3b"

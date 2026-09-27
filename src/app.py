@@ -281,7 +281,7 @@ class FilterUI:
             "correct": parameters.TILE_CORRECT,
         }.items():
             self.themes[state] = tile_theme(bg)
-            self.focus_themes[state] = tile_theme(bg, border=getattr(parameters, "TILE_FOCUS_BORDER", Theme.COLOR), border_size=2)
+            self.focus_themes[state] = tile_theme(Theme.COLOR, border_size=2)
 
     def _apply_global_theme(self):
         with dpg.theme() as theme:
@@ -467,7 +467,7 @@ def run():
 
     ui = FilterUI(mono_font=mono_font)
 
-    viewport_width = ui.WINDOW_WIDTH + 20
+    viewport_width = parameters.WINDOW_WIDTH + 20
     viewport_height = ui.window_height + 20
 
     dpg.create_viewport(

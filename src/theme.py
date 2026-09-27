@@ -14,7 +14,7 @@ class Theme:
         ),
     }
     # Color schemes
-    _active = _SCHEMES["dark_blue"]
+    _active = _SCHEMES["dark_purple"]
 
     COLOR_BG = _active["BG"]
     COLOR_BG_LIGHT = _active["BG_LIGHT"]
