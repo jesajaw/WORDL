@@ -246,7 +246,7 @@ class Board:
             self.tile(row - 1, parameters.WORD_LENGTH - 1).clear()
 
 
-class FilterUI:
+class UI:
     def __init__(self, mono_font=None):
         self.wf = Filter()
         self.focus_row = 0
@@ -465,7 +465,7 @@ def run():
     scale = get_dpi_scale()
     loaded_ui_font, mono_font = _setup_fonts(scale)
 
-    ui = FilterUI(mono_font=mono_font)
+    ui = UI(mono_font=mono_font)
 
     viewport_width = parameters.WINDOW_WIDTH + 20
     viewport_height = ui.window_height + 20
