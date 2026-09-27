@@ -2,9 +2,7 @@
 from .config import parameters
 from .wordlist import WORDS
 
-
-class Filter:
-    # Filters a word list based on Wordle-style clues
+class Filter: # filters a word list based on Wordle-style clues
     def __init__(self, word_length=parameters.WORD_LENGTH):
         self.word_length = word_length
         self.wordlist = [
@@ -13,8 +11,7 @@ class Filter:
         ]
         self.reset()
 
-    def reset(self):
-        # Clears all clues
+    def reset(self): # clears all clues
         self.absent_letters = set()   # grey: not in the word at all
         self.present_letters = {}     # yellow: letter -> {excluded positions}
         self.fixed_positions = {}     # green: position -> letter
@@ -22,20 +19,18 @@ class Filter:
     def add_absent(self, letters):
         self.absent_letters.update(letters)
 
-    def add_present(self, letter, position):
-        # `position` is 0-indexed. The letter is known to be in the word, just not at this position.
+    def add_present(self, letter, position): # position is 0-indexed -- the letter is known to be in the word, just not at this position.
         self.present_letters.setdefault(letter, set()).add(position)
 
     def add_fixed(self, position, letter):
         self.fixed_positions[position] = letter
 
-    def _matches(self, word):
-        # green: letter must sit exactly here
+    def _matches(self, word): # green: letter must sit exactly here
         for pos, letter in self.fixed_positions.items():
             if pos >= len(word) or word[pos] != letter:
                 return False
+            # yellow: letter must be in the word, just not at these positions
 
-        # yellow: letter must be in the word, just not at these positions
         for letter, excluded_positions in self.present_letters.items():
             if letter not in word:
                 return False

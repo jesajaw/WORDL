@@ -1,20 +1,20 @@
-# Byte-compiled / cache
+# cache
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 
-# Distribution / packaging
+# distribution / packaging
 build/
 dist/
 *.egg-info/
 
-# Virtual environments
+# virtual environments
 .venv/
 venv/
 env/
 
-# Editors / OS
+# editors / OS
 .vscode/
 .idea/
 .DS_Store

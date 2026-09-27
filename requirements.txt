@@ -1,2 +1,2 @@
 # python>=3.9
-dearpygui>=1.10,<2.0
+dearpygui>=1.10

@@ -26,8 +26,9 @@ That is why I put together this simple script -- to help guide you toward the so
 WORDL/
 ├── src/
 │   ├── __init__.py
-│   ├── app.py          # Dear PyGui UI (current front end) + entry point (run())
-│   ├── config.py       # theme colors, dimensions, and settings
+│   ├── app.py          # Dear PyGui UI + entry point (run())
+│   ├── config.py       # dimensions, and settings
+│   ├── theme.py        # theme colors
 │   ├── filter.py       # Wordle constraint evaluation & filter engine
 │   ├── wordlist.py     # word list
 ├── .gitignore
@@ -62,3 +63,15 @@ You can fill in as many guess rows as you've actually played; the filter re-runs
 
 ---
 **Live filtering:** Every tile edit runs the filter immediately. The word list (~2,300 words) is small enough that this is instant, so no debouncing is needed.
+
+## 🛠️ Requirements
+As mentioned, install via `requirements`, **Python 3.8+** and **Dear PyGUI 1.10+** are needed -- I just wanted to try this UI package!
+
+## 🙏 Acknowledgments
+
+* [3Blue1Brown](https://www.youtube.com/@3blue1brown), for the brilliant [video](https://www.youtube.com/watch?v=v68zYyaEmEA) on Wordle and information theory that brought this project up.
+
+* The New York Times for creating and maintaining the daily puzzle phenomenon [NYT WORDL](https://www.nytimes.com/games/wordle/index.html).
+
+## 📜 License
+Distributed under the MIT License. See `LICENSE` for more information.

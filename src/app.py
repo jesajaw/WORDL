@@ -10,15 +10,13 @@ from .theme import Theme
 from .filter import Filter
 
 
-# ---------------------------------------------------------------------------
+
 # Windows-only DPI / native-window helpers. No-ops on non-Windows platforms.
-# ---------------------------------------------------------------------------
 def _is_win() -> bool:
     return sys.platform == "win32"
 
 
-def enable_dpi_awareness() -> None:
-    """Must run BEFORE dpg.create_context()/the viewport is created."""
+def enable_dpi_awareness() -> None: # must run BEFORE dpg.create_context()/the viewport is created
     if not _is_win():
         return
     try:
@@ -30,8 +28,7 @@ def enable_dpi_awareness() -> None:
             pass
 
 
-def get_dpi_scale() -> float:
-    """Best-effort scale factor of the primary monitor (1.0, 1.25, 1.5, ...)."""
+def get_dpi_scale() -> float: # scale factor of the primary monitor -- 1.0, 1.25, 1.5, ...
     if not _is_win():
         return 1.0
     try:
@@ -60,8 +57,7 @@ def center_viewport(width: int, height: int) -> None:
         pass
 
 
-def apply_dark_titlebar_by_title(title: str) -> None:
-    """Finds the OS window by its title and forces a dark titlebar (DWM)."""
+def apply_dark_titlebar_by_title(title: str) -> None: # finds the OS window by its title and forces a dark titlebar (DWM)
     if not _is_win():
         return
     try:
@@ -80,14 +76,10 @@ def apply_dark_titlebar_by_title(title: str) -> None:
 
 
 def _setup_fonts(scale: float):
-    """Loads real TTFs at a DPI-scaled pixel size for crisp text instead of
-    stretching Dear PyGui's built-in bitmap font (which looks blurry).
+    # Loads real TTFs at a DPI-scaled pixel size for crisp text instead of stretching Dear PyGui's built-in bitmap font (which looks blurry).
 
-    Returns (loaded_ui_font: bool, mono_font_id_or_None). The results word
-    list is column-aligned with fixed-width padding, which only lines up
-    correctly with a MONOSPACE font - Segoe UI/Arial are proportional and
-    would misalign (and can wrap oddly) the word columns.
-    """
+    # Returns (loaded_ui_font: bool, mono_font_id_or_None). The results word list is column-aligned with fixed-width padding, which only lines up correctly with a MONOSPACE font - Segoe UI/Arial are proportional and would misalign (and can wrap oddly) the word columns.
+
     ui_size = max(13, round(16 * scale))
     mono_size = max(13, round(15 * scale))
 
@@ -146,8 +138,7 @@ KEY_SPACE = _key_const("mvKey_Spacebar", "mvKey_Space")
 KEY_A = getattr(dpg, "mvKey_A", 65)
 KEY_Z = getattr(dpg, "mvKey_Z", 90)
 
-class LetterTile:
-    """A single 5x5 Wordle-style tile implemented with a Dear PyGui button."""
+class LetterTile: # a single 5x5 Wordle-style tile implemented with a Dear PyGui button
 
     def __init__(self, owner, row, col):
         self.owner = owner
@@ -157,14 +148,8 @@ class LetterTile:
         self.state = "empty"
         self.tag = f"tile_{row}_{col}"
 
-        dpg.add_button(
-            label="",
-            tag=self.tag,
-            width=parameters.TILE_SIZE,
-            height=parameters.TILE_SIZE,
-            callback=self._cycle_state,
-            user_data=(row, col),
-        )
+        dpg.add_button(label="", tag=self.tag, width=parameters.TILE_SIZE, height=parameters.TILE_SIZE,
+                       callback=self._cycle_state, user_data=(row, col))
         self.redraw()
 
     def set_letter(self, letter):
@@ -187,13 +172,12 @@ class LetterTile:
         if not self.letter:
             return
 
-        cycle = parameters.CYCLE
         try:
-            current = cycle.index(self.state)
+            current = parameters.CYCLE.index(self.state)
         except ValueError:
             current = -1
 
-        self.state = cycle[(current + 1) % len(cycle)]
+        self.state = parameters.CYCLE[(current + 1) % len(parameters.CYCLE)]
         self.redraw()
         self.owner.on_tile_changed()
 
@@ -276,10 +260,7 @@ class FilterUI:
         self._create_ui()
         self._run_filter_now()
 
-    # ------------------------------------------------------------------
     # Dear PyGui setup
-    # ------------------------------------------------------------------
-
     def _create_themes(self):
         def tile_theme(bg, fg=parameters.TILE_TEXT, border=parameters.TILE_BORDER, border_size=1):
             with dpg.theme() as theme:
@@ -292,18 +273,15 @@ class FilterUI:
                     _theme_style("mvStyleVar_FrameBorderSize", border_size)
                     _theme_color("mvThemeCol_Border", self._rgb(border))
             return theme
-
-        focus_border = getattr(parameters, "TILE_FOCUS_BORDER", Theme.COLOR)
-
-        states = {
+        
+        for state, bg in {
             "empty": Theme.COLOR_BG,
             "absent": parameters.TILE_ABSENT,
             "present": parameters.TILE_PRESENT,
             "correct": parameters.TILE_CORRECT,
-        }
-        for state, bg in states.items():
+        }.items():
             self.themes[state] = tile_theme(bg)
-            self.focus_themes[state] = tile_theme(bg, border=focus_border, border_size=2)
+            self.focus_themes[state] = tile_theme(bg, border=getattr(parameters, "TILE_FOCUS_BORDER", Theme.COLOR), border_size=2)
 
     def _apply_global_theme(self):
         with dpg.theme() as theme:
@@ -345,21 +323,20 @@ class FilterUI:
         board_height = parameters.MAX_GUESSES * parameters.TILE_SIZE + (parameters.MAX_GUESSES - 1) * parameters.TILE_GAP + 10
         clear_width = 140
 
-        window_height = (
+        self.window_height = (
             8 + 30 + 14             # header + spacer
             + board_height + 12     # board + spacer
             + 32 + 16               # clear button + spacer
             + 24 + 8                # count label + spacer
             + 280                   # result list
-            + 40                   # chrome / safety margin
+            + 40                    # chrome / safety margin
         )
-        self.window_height = window_height
 
         with dpg.window(
             tag="main_window",
             label=parameters.WINDOW_TITLE,
             width=parameters.WINDOW_WIDTH,
-            height=window_height,
+            height=self.window_height,
             no_collapse=True,
             no_resize=False,
             no_scrollbar=True,
@@ -384,16 +361,8 @@ class FilterUI:
 
             dpg.add_spacer(height=8)
 
-            with dpg.child_window(
-                tag="result_container",
-                width=-1,
-                height=parameters.RESULT_HEIGHT,
-                border=True,
-            ):
-                # Plain text, not input_text: a readonly input_text can still
-                # grab keyboard focus on click, and while it has focus the
-                # global key_press_handler stops seeing letter keys — that's
-                # what was blocking typing. add_text can never take focus.
+            with dpg.child_window(tag="result_container", width=-1, height=parameters.RESULT_HEIGHT,border=True):
+                # Plain text, not input_text: a readonly input_text can still grab keyboard focus on click, and while it has focus the global key_press_handler stops seeing letter keys — that's what was blocking typing. add_text can never take focus.
                 self.result_text = dpg.add_text(
                     tag="result_text",
                     default_value="",
@@ -406,10 +375,6 @@ class FilterUI:
 
         self.board.focus_first_tile()
 
-    # ------------------------------------------------------------------
-    # Focus handling
-    # ------------------------------------------------------------------
-
     def is_focused(self, row, col):
         return self.focus_row == row and self.focus_col == col
 
@@ -419,10 +384,6 @@ class FilterUI:
         if hasattr(self, "board"):
             self.board.tile(old_row, old_col).redraw()
             self.board.tile(row, col).redraw()
-
-    # ------------------------------------------------------------------
-    # Input
-    # ------------------------------------------------------------------
 
     def _on_key_press(self, sender, app_data, user_data=None):
         key = app_data
@@ -446,10 +407,6 @@ class FilterUI:
         tile = self.board.tile(self.focus_row, self.focus_col)
         tile.set_letter(letter)
         self.board.advance()
-
-    # ------------------------------------------------------------------
-    # Filtering
-    # ------------------------------------------------------------------
 
     def on_tile_changed(self):
         self._run_filter_now()
@@ -482,8 +439,7 @@ class FilterUI:
 
         upper = [word.upper() for word in words]
         col_chars = max(len(word) for word in upper) + 3
-        # Rough monospace char-width estimate (Consolas-ish); deliberately a
-        # bit conservative so lines never overflow the box and wrap oddly.
+        # Rough monospace char-width estimate (Consolas-ish); deliberately a bit conservative so lines never overflow the box and wrap oddly.
         char_px = 11
         col_px = col_chars * char_px
         columns = max(1, available_width // col_px)
