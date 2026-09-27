@@ -1,3 +1,2 @@
-# WORDL Filter dependencies
-# Python 3.9+ required.
+# python>=3.9
 dearpygui>=1.10,<2.0

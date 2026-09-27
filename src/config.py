@@ -1,40 +1,18 @@
-# jsut all global parameters / ui-stuff
+# jsut all global parameters
 class parameters:
     WORD_LENGTH = 5
     MAX_GUESSES = 6
 
+    WINDOW_WIDTH = 760
+    RESULT_HEIGHT = 280
+
+    WINDOW_TITLE = "WORDL Filter"
+    TILE_SIZE = 62
+    TILE_GAP = 6
+
     CYCLE = ["absent", "present", "correct"]
 
-    RESULT_COLUMNS = 7
-
-    # Only used by the legacy Tkinter UI (src/ui_old.py), kept for reference.
-    FILTER_DEBOUNCE_MS = 150
-    RESULT_FONT = ("Consolas", 11)
-
-    _SCHEMES = {
-        "dark_purple": dict(
-            BG="#1e1e24", BG_LIGHT="#2a2a33", FG="#e0dff0",
-            ACCENT="#9b59d9", ACCENT_DARK="#6c3fa0", STATUS_TEXT="#c9a6f5",
-        ),
-        "dark_blue": dict(
-            BG="#1e1e24", BG_LIGHT="#2a2a33", FG="#e0dff0",
-            ACCENT="#4a90d9", ACCENT_DARK="#2f5f9e", STATUS_TEXT="#a6c9f5",
-        ),
-        "black_white": dict(
-            BG="#000000", BG_LIGHT="#1a1a1a", FG="#ffffff",
-            ACCENT="#ffffff", ACCENT_DARK="#808080", STATUS_TEXT="#d9d9d9",
-        ),
-    }
-    # Color schemes
-    _active = _SCHEMES["dark_purple"]
-
-    COLOR_BG = _active["BG"]
-    COLOR_BG_LIGHT = _active["BG_LIGHT"]
-    COLOR_FG = _active["FG"]
-    COLOR = _active["ACCENT"]
-    COLOR_DARK = _active["ACCENT_DARK"]
-    COLOR_STATUS_TEXT = _active["STATUS_TEXT"]
-
+    RESULT_COLUMNS = 8
 
     # Tile colors
     TILE_ABSENT = "#3a3a3c"

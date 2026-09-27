@@ -5,8 +5,9 @@ import sys
 
 import dearpygui.dearpygui as dpg
 
-from . import parameters
-from . import Filter
+from .config import parameters
+from .theme import Theme
+from .filter import Filter
 
 
 # ---------------------------------------------------------------------------
@@ -125,15 +126,13 @@ def _key_const(*names):
     return None
 
 
-def _theme_color(name, value):
-    """Adds a theme color only if this DPG version exposes that constant."""
+def _theme_color(name, value):# adds a theme color only if this DPG version exposes that constant
     const = getattr(dpg, name, None)
     if const is not None:
         dpg.add_theme_color(const, value)
 
 
-def _theme_style(name, *args):
-    """Adds a theme style only if this DPG version exposes that constant."""
+def _theme_style(name, *args): # adds a theme style only if this DPG version exposes that constant
     const = getattr(dpg, name, None)
     if const is not None:
         dpg.add_theme_style(const, *args)
@@ -144,11 +143,8 @@ def _theme_style(name, *args):
 KEY_BACKSPACE = _key_const("mvKey_Back", "mvKey_Backspace")
 KEY_DELETE = _key_const("mvKey_Delete")
 KEY_SPACE = _key_const("mvKey_Spacebar", "mvKey_Space")
-
-WINDOW_TITLE = "WORDL Filter"
-TILE_SIZE = 62
-TILE_GAP = 6
-
+KEY_A = getattr(dpg, "mvKey_A", 65)
+KEY_Z = getattr(dpg, "mvKey_Z", 90)
 
 class LetterTile:
     """A single 5x5 Wordle-style tile implemented with a Dear PyGui button."""
@@ -164,8 +160,8 @@ class LetterTile:
         dpg.add_button(
             label="",
             tag=self.tag,
-            width=TILE_SIZE,
-            height=TILE_SIZE,
+            width=parameters.TILE_SIZE,
+            height=parameters.TILE_SIZE,
             callback=self._cycle_state,
             user_data=(row, col),
         )
@@ -226,9 +222,9 @@ class Board:
                         tile = LetterTile(owner, row, col)
                         tiles.append(tile)
                         if col < parameters.WORD_LENGTH - 1:
-                            dpg.add_spacer(width=TILE_GAP)
+                            dpg.add_spacer(width=parameters.TILE_GAP)
                 if row < parameters.MAX_GUESSES - 1:
-                    dpg.add_spacer(height=TILE_GAP)
+                    dpg.add_spacer(height=parameters.TILE_GAP)
                 self.rows.append(tiles)
 
     def tile(self, row, col):
@@ -267,8 +263,6 @@ class Board:
 
 
 class FilterUI:
-    WINDOW_WIDTH = 760
-
     def __init__(self, mono_font=None):
         self.wf = Filter()
         self.focus_row = 0
@@ -299,10 +293,10 @@ class FilterUI:
                     _theme_color("mvThemeCol_Border", self._rgb(border))
             return theme
 
-        focus_border = getattr(parameters, "TILE_FOCUS_BORDER", parameters.COLOR)
+        focus_border = getattr(parameters, "TILE_FOCUS_BORDER", Theme.COLOR)
 
         states = {
-            "empty": parameters.COLOR_BG,
+            "empty": Theme.COLOR_BG,
             "absent": parameters.TILE_ABSENT,
             "present": parameters.TILE_PRESENT,
             "correct": parameters.TILE_CORRECT,
@@ -314,24 +308,24 @@ class FilterUI:
     def _apply_global_theme(self):
         with dpg.theme() as theme:
             with dpg.theme_component(dpg.mvAll):
-                _theme_color("mvThemeCol_WindowBg", self._rgb(parameters.COLOR_BG))
-                _theme_color("mvThemeCol_ChildBg", self._rgb(parameters.COLOR_BG))
-                _theme_color("mvThemeCol_PopupBg", self._rgb(parameters.COLOR_BG))
-                _theme_color("mvThemeCol_Text", self._rgb(parameters.COLOR_FG))
-                _theme_color("mvThemeCol_Border", self._rgb(parameters.COLOR_DARK))
-                _theme_color("mvThemeCol_FrameBg", self._rgb(parameters.COLOR_BG_LIGHT))
-                _theme_color("mvThemeCol_FrameBgHovered", self._rgb(parameters.COLOR_DARK))
-                _theme_color("mvThemeCol_FrameBgActive", self._rgb(parameters.COLOR_DARK))
-                _theme_color("mvThemeCol_ScrollbarBg", self._rgb(parameters.COLOR_BG))
-                _theme_color("mvThemeCol_ScrollbarGrab", self._rgb(parameters.COLOR))
-                _theme_color("mvThemeCol_ScrollbarGrabHovered", self._rgb(parameters.COLOR))
-                _theme_color("mvThemeCol_ScrollbarGrabActive", self._rgb(parameters.COLOR))
+                _theme_color("mvThemeCol_WindowBg", self._rgb(Theme.COLOR_BG))
+                _theme_color("mvThemeCol_ChildBg", self._rgb(Theme.COLOR_BG))
+                _theme_color("mvThemeCol_PopupBg", self._rgb(Theme.COLOR_BG))
+                _theme_color("mvThemeCol_Text", self._rgb(Theme.COLOR_FG))
+                _theme_color("mvThemeCol_Border", self._rgb(Theme.COLOR_DARK))
+                _theme_color("mvThemeCol_FrameBg", self._rgb(Theme.COLOR_BG_LIGHT))
+                _theme_color("mvThemeCol_FrameBgHovered", self._rgb(Theme.COLOR_DARK))
+                _theme_color("mvThemeCol_FrameBgActive", self._rgb(Theme.COLOR_DARK))
+                _theme_color("mvThemeCol_ScrollbarBg", self._rgb(Theme.COLOR_BG))
+                _theme_color("mvThemeCol_ScrollbarGrab", self._rgb(Theme.COLOR))
+                _theme_color("mvThemeCol_ScrollbarGrabHovered", self._rgb(Theme.COLOR))
+                _theme_color("mvThemeCol_ScrollbarGrabActive", self._rgb(Theme.COLOR))
                 _theme_style("mvStyleVar_ScrollbarSize", 14)
 
             with dpg.theme_component(dpg.mvButton):
-                _theme_color("mvThemeCol_Button", self._rgb(parameters.COLOR_BG_LIGHT))
-                _theme_color("mvThemeCol_ButtonHovered", self._rgb(parameters.COLOR_DARK))
-                _theme_color("mvThemeCol_ButtonActive", self._rgb(parameters.COLOR))
+                _theme_color("mvThemeCol_Button", self._rgb(Theme.COLOR_BG_LIGHT))
+                _theme_color("mvThemeCol_ButtonHovered", self._rgb(Theme.COLOR_DARK))
+                _theme_color("mvThemeCol_ButtonActive", self._rgb(Theme.COLOR))
                 _theme_style("mvStyleVar_FrameRounding", 4)
                 _theme_style("mvStyleVar_FramePadding", 8, 6)
 
@@ -344,79 +338,71 @@ class FilterUI:
 
     def _create_ui(self):
         with dpg.handler_registry():
-            dpg.add_key_press_handler(
-                callback=self._on_key_press,
-                tag="wordl_key_handler",
-            )
+            dpg.add_key_press_handler(callback=self._on_key_press, tag="wordl_key_handler")
 
-        content_width = self.WINDOW_WIDTH - 40  # rough allowance for window padding
-        board_width = parameters.WORD_LENGTH * TILE_SIZE + (parameters.WORD_LENGTH - 1) * TILE_GAP
-        board_height = parameters.MAX_GUESSES * TILE_SIZE + (parameters.MAX_GUESSES - 1) * TILE_GAP + 10
+        self.content_width = parameters.WINDOW_WIDTH - 40  # rough allowance for window padding
+        board_width = parameters.WORD_LENGTH * parameters.TILE_SIZE + (parameters.WORD_LENGTH - 1) * parameters.TILE_GAP
+        board_height = parameters.MAX_GUESSES * parameters.TILE_SIZE + (parameters.MAX_GUESSES - 1) * parameters.TILE_GAP + 10
         clear_width = 140
 
         window_height = (
-            8 + 30 + 14            # header + spacer
+            8 + 30 + 14             # header + spacer
             + board_height + 12     # board + spacer
-            + 32 + 16                # clear button + spacer
-            + 24 + 8                  # count label + spacer
-            + 280                      # result list
-            + 100                       # chrome / safety margin (title bar, window padding, ...)
+            + 32 + 16               # clear button + spacer
+            + 24 + 8                # count label + spacer
+            + 280                   # result list
+            + 40                   # chrome / safety margin
         )
         self.window_height = window_height
 
         with dpg.window(
             tag="main_window",
-            label=WINDOW_TITLE,
-            width=self.WINDOW_WIDTH,
+            label=parameters.WINDOW_TITLE,
+            width=parameters.WINDOW_WIDTH,
             height=window_height,
             no_collapse=True,
             no_resize=False,
             no_scrollbar=True,
             no_scroll_with_mouse=True,
         ):
-            dpg.add_spacer(height=8)
-
-            with dpg.group(horizontal=True):
-                dpg.add_text("WORDL", color=self._rgb(parameters.COLOR_STATUS_TEXT))
-                dpg.add_text("  Wordle Filter")
-
-            dpg.add_spacer(height=14)
-
             # No child_window here on purpose: a child_window adds its own
             # internal padding, which was silently clipping the 5th tile.
             # The board sits directly in the (centered) group instead.
             with dpg.group(horizontal=True):
-                dpg.add_spacer(width=max(0, (content_width - board_width) // 2))
+                dpg.add_spacer(width=max(0, (self.content_width - board_width) // 2))
                 self.board = Board(self)
 
             dpg.add_spacer(height=12)
 
             with dpg.group(horizontal=True):
-                dpg.add_spacer(width=max(0, (content_width - clear_width) // 2))
+                dpg.add_spacer(width=max(0, (self.content_width - clear_width) // 2))
                 dpg.add_button(label="Clear", width=clear_width, height=32, callback=self.clear_board)
 
             dpg.add_spacer(height=16)
 
-            self.count_label = dpg.add_text(
-                "0 possible words",
-                color=self._rgb(parameters.COLOR_STATUS_TEXT),
-            )
+            self.count_label = dpg.add_text("0 possible words", color=self._rgb(Theme.COLOR_STATUS_TEXT))
 
             dpg.add_spacer(height=8)
 
-            self.result_text = dpg.add_input_text(
-                tag="result_text",
-                multiline=True,
-                readonly=True,
+            with dpg.child_window(
+                tag="result_container",
                 width=-1,
-                height=280,
-                default_value="",
-            )
-            if self.mono_font:
-                try:
-                    dpg.bind_item_font(self.result_text, self.mono_font)
-                except Exception:
-                    pass
+                height=parameters.RESULT_HEIGHT,
+                border=True,
+            ):
+                # Plain text, not input_text: a readonly input_text can still
+                # grab keyboard focus on click, and while it has focus the
+                # global key_press_handler stops seeing letter keys — that's
+                # what was blocking typing. add_text can never take focus.
+                self.result_text = dpg.add_text(
+                    tag="result_text",
+                    default_value="",
+                )
+                if self.mono_font:
+                    try:
+                        dpg.bind_item_font(self.result_text, self.mono_font)
+                    except Exception:
+                        pass
 
         self.board.focus_first_tile()
 
@@ -438,7 +424,7 @@ class FilterUI:
     # Input
     # ------------------------------------------------------------------
 
-    def _on_key_press(self, sender, app_data):
+    def _on_key_press(self, sender, app_data, user_data=None):
         key = app_data
 
         if KEY_BACKSPACE is not None and key in (KEY_BACKSPACE, KEY_DELETE):
@@ -449,8 +435,8 @@ class FilterUI:
             self.board.tile(self.focus_row, self.focus_col).cycle_state()
             return
 
-        if isinstance(key, int) and 65 <= key <= 90:
-            self._put_letter(chr(key))
+        if isinstance(key, int) and KEY_A <= key <= KEY_Z:
+            self._put_letter(chr(ord("A") + (key - KEY_A)))
             return
 
         if isinstance(key, str) and len(key) == 1 and key in string.ascii_letters:
@@ -487,19 +473,25 @@ class FilterUI:
         results = self.wf.filter()
 
         dpg.set_value(self.count_label, f"{len(results)} possible word(s)")
-        dpg.set_value(self.result_text, self._format_results(results))
+        dpg.set_value(self.result_text, self._format_results(results, self.content_width))
 
     @staticmethod
-    def _format_results(words):
+    def _format_results(words, available_width):
         if not words:
             return "No matches."
 
         upper = [word.upper() for word in words]
-        col_width = max(len(word) for word in upper) + 3
-        lines = []
+        col_chars = max(len(word) for word in upper) + 3
+        # Rough monospace char-width estimate (Consolas-ish); deliberately a
+        # bit conservative so lines never overflow the box and wrap oddly.
+        char_px = 11
+        col_px = col_chars * char_px
+        columns = max(1, available_width // col_px)
 
-        for i in range(0, len(upper), parameters.RESULT_COLUMNS):
-            row = upper[i:i + parameters.RESULT_COLUMNS]
+        col_width = col_chars
+        lines = []
+        for i in range(0, len(upper), columns):
+            row = upper[i:i + columns]
             lines.append("".join(word.ljust(col_width) for word in row))
 
         return "\n".join(lines)
@@ -523,7 +515,7 @@ def run():
     viewport_height = ui.window_height + 20
 
     dpg.create_viewport(
-        title=WINDOW_TITLE,
+        title=parameters.WINDOW_TITLE,
         width=viewport_width,
         height=viewport_height,
     )
@@ -535,7 +527,7 @@ def run():
         dpg.set_global_font_scale(scale)
 
     dpg.show_viewport()
-    apply_dark_titlebar_by_title(WINDOW_TITLE)
+    apply_dark_titlebar_by_title(parameters.WINDOW_TITLE)
     dpg.set_primary_window("main_window", True)
 
     dpg.start_dearpygui()
