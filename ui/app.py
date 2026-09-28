@@ -1,490 +1,156 @@
-import ctypes
-import os
-import string
-import sys
+"""
+WORDL Filter -- tkinter UI.
 
-import dearpygui.dearpygui as dpg
+Type your guesses, click tiles to set the colors Wordle showed you, and the list of
+remaining words updates live. Look and feel are shared with mtools (see style.py,
+widgets.py, dialogs.py); the constraint logic lives in src/filter.py.
+"""
 
-from .config import parameters
-from .theme import Theme
-from ..src.filter import Filter
+from __future__ import annotations
 
+import tkinter as tk
+from tkinter import ttk
 
+from src.config import WORD_LENGTH
+from src.filter import Filter
+from . import dialogs, style
+from .widgets import Board, Cell
 
-# Windows-only DPI / native-window helpers. No-ops on non-Windows platforms.
-def _is_win() -> bool:
-    return sys.platform == "win32"
-
-
-def enable_dpi_awareness() -> None: # must run BEFORE dpg.create_context()/the viewport is created
-    if not _is_win():
-        return
-    try:
-        ctypes.windll.shcore.SetProcessDpiAwareness(1)  # PROCESS_SYSTEM_DPI_AWARE
-    except Exception:
-        try:
-            ctypes.windll.user32.SetProcessDPIAware()  # fallback for older Windows
-        except Exception:
-            pass
+WINDOW_TITLE = "WORDL Filter"
+LIST_COLUMNS = 6            # words per line in the result list
+LIST_ROWS = 9               # visible lines of the result list
+INSTRUCTIONS = (
+    "Type your guess, then click a tile to cycle its color (grey > yellow > green).\n"
+    "Space = cycle, Backspace = delete, arrows = move. Click a word below to use it as the next guess."
+)
 
 
-def get_dpi_scale() -> float: # scale factor of the primary monitor -- 1.0, 1.25, 1.5, ...
-    if not _is_win():
-        return 1.0
-    try:
-        MONITOR_DEFAULTTOPRIMARY = 1
-        hmonitor = ctypes.windll.user32.MonitorFromWindow(
-            ctypes.windll.user32.GetDesktopWindow(), MONITOR_DEFAULTTOPRIMARY
-        )
-        dpi_x = ctypes.c_uint()
-        dpi_y = ctypes.c_uint()
-        ctypes.windll.shcore.GetDpiForMonitor(hmonitor, 0, ctypes.byref(dpi_x), ctypes.byref(dpi_y))
-        return dpi_x.value / 96.0
-    except Exception:
-        return 1.0
-
-
-def center_viewport(width: int, height: int) -> None:
-    if not _is_win():
-        return
-    try:
-        screen_w = ctypes.windll.user32.GetSystemMetrics(0)
-        screen_h = ctypes.windll.user32.GetSystemMetrics(1)
-        x = max(0, (screen_w - width) // 2)
-        y = max(0, (screen_h - height) // 2)
-        dpg.set_viewport_pos([x, y])
-    except Exception:
-        pass
-
-
-def apply_dark_titlebar_by_title(title: str) -> None: # finds the OS window by its title and forces a dark titlebar (DWM)
-    if not _is_win():
-        return
-    try:
-        hwnd = ctypes.windll.user32.FindWindowW(None, title)
-        if not hwnd:
-            return
-        for attribute in (20, 19):  # DWMWA_USE_IMMERSIVE_DARK_MODE: 20 (Win10 2004+), 19 (older)
-            value = ctypes.c_int(1)
-            result = ctypes.windll.dwmapi.DwmSetWindowAttribute(
-                hwnd, attribute, ctypes.byref(value), ctypes.sizeof(value)
-            )
-            if result == 0:
-                break
-    except Exception:
-        pass
-
-
-def _setup_fonts(scale: float):
-    # Loads real TTFs at a DPI-scaled pixel size for crisp text instead of stretching Dear PyGui's built-in bitmap font (which looks blurry).
-
-    # Returns (loaded_ui_font: bool, mono_font_id_or_None). The results word list is column-aligned with fixed-width padding, which only lines up correctly with a MONOSPACE font - Segoe UI/Arial are proportional and would misalign (and can wrap oddly) the word columns.
-
-    ui_size = max(13, round(16 * scale))
-    mono_size = max(13, round(15 * scale))
-
-    ui_candidates = [
-        r"C:\Windows\Fonts\segoeui.ttf",
-        r"C:\Windows\Fonts\arial.ttf",
-    ]
-    mono_candidates = [
-        r"C:\Windows\Fonts\consola.ttf",
-        r"C:\Windows\Fonts\cour.ttf",
-    ]
-
-    loaded_ui = False
-    mono_font = None
-
-    with dpg.font_registry():
-        for path in ui_candidates:
-            if os.path.exists(path):
-                font = dpg.add_font(path, ui_size)
-                dpg.bind_font(font)
-                loaded_ui = True
-                break
-
-        for path in mono_candidates:
-            if os.path.exists(path):
-                mono_font = dpg.add_font(path, mono_size)
-                break
-
-    return loaded_ui, mono_font
-
-
-def _key_const(*names):
-    for name in names:
-        if hasattr(dpg, name):
-            return getattr(dpg, name)
-    return None
-
-
-def _theme_color(name, value):# adds a theme color only if this DPG version exposes that constant
-    const = getattr(dpg, name, None)
-    if const is not None:
-        dpg.add_theme_color(const, value)
-
-
-def _theme_style(name, *args): # adds a theme style only if this DPG version exposes that constant
-    const = getattr(dpg, name, None)
-    if const is not None:
-        dpg.add_theme_style(const, *args)
-
-
-# Key constants differ between Dear PyGui versions (e.g. mvKey_Space vs.
-# mvKey_Spacebar). Resolve once, with fallbacks, instead of hard failing.
-KEY_BACKSPACE = _key_const("mvKey_Back", "mvKey_Backspace")
-KEY_DELETE = _key_const("mvKey_Delete")
-KEY_SPACE = _key_const("mvKey_Spacebar", "mvKey_Space")
-KEY_A = getattr(dpg, "mvKey_A", 65)
-KEY_Z = getattr(dpg, "mvKey_Z", 90)
-
-class LetterTile: # a single 5x5 Wordle-style tile implemented with a Dear PyGui button
-
-    def __init__(self, owner, row, col):
-        self.owner = owner
-        self.row = row
-        self.col = col
-        self.letter = ""
-        self.state = "empty"
-        self.tag = f"tile_{row}_{col}"
-
-        dpg.add_button(label="", tag=self.tag, width=parameters.TILE_SIZE, height=parameters.TILE_SIZE,
-                       callback=self._cycle_state, user_data=(row, col))
-        self.redraw()
-
-    def set_letter(self, letter):
-        self.letter = letter.upper() if letter else ""
-        if self.letter and self.state == "empty":
-            self.state = "absent"
-        elif not self.letter:
-            self.state = "empty"
-        self.redraw()
-        self.owner.on_tile_changed()
-
-    def clear(self, notify=True):
-        self.letter = ""
-        self.state = "empty"
-        self.redraw()
-        if notify:
-            self.owner.on_tile_changed()
-
-    def cycle_state(self):
-        if not self.letter:
-            return
+class App:
+    def __init__(self, root: tk.Tk):
+        self.root = root
+        root.title(WINDOW_TITLE)
+        style.apply_style(root)
 
         try:
-            current = parameters.CYCLE.index(self.state)
-        except ValueError:
-            current = -1
+            self.filter = Filter()
+        except OSError as e:
+            dialogs.show_error(root, "Word list missing", f"Could not read words.txt:\n{e}")
+            root.destroy()
+            raise SystemExit(1)
 
-        self.state = parameters.CYCLE[(current + 1) % len(parameters.CYCLE)]
-        self.redraw()
-        self.owner.on_tile_changed()
+        self._last_key = None
+        self._build()
+        root.bind("<Key>", self._on_key)
+        self._update()
+        self._size_to_content()
 
-    def _cycle_state(self, sender=None, app_data=None, user_data=None):
-        self.cycle_state()
+    # --------- UI
+    def _build(self) -> None:
+        pad = dict(padx=10)
 
-    def redraw(self):
-        label = self.letter or " "
-        dpg.configure_item(self.tag, label=label)
+        ttk.Label(self.root, text=WINDOW_TITLE, style="CategoryHeader.TLabel", font=style.FONT_TITLE).pack(anchor="w", pady=(10, 2), **pad)
+        ttk.Label(self.root, text=INSTRUCTIONS, style="Status.TLabel", justify="left").pack(anchor="w", pady=(0, 8), **pad)
 
-        focused = self.owner.is_focused(self.row, self.col)
-        theme_set = self.owner.focus_themes if focused else self.owner.themes
-        dpg.bind_item_theme(self.tag, theme_set[self.state])
+        self.board = Board(self.root, on_change=self._update)
+        self.board.pack(pady=(0, 6))
 
+        buttons = ttk.Frame(self.root)
+        buttons.pack(fill="x", pady=(0, 8), **pad)
+        Cell(buttons, "Clear", on_click=self.board.clear, height=40, width=80).pack(side="left", fill="x", expand=True, padx=(0, 4))
+        Cell(buttons, "Undo row", on_click=self.board.remove_last_row, height=40, width=80).pack(side="left", fill="x", expand=True, padx=(4, 0))
 
-class Board:
-    def __init__(self, owner):
-        self.owner = owner
-        self.rows = []
+        info = ttk.Frame(self.root)
+        info.pack(fill="x", pady=(0, 8), **pad)
+        self.count_cell = Cell(info, "Possible words", status_text="", height=style.CELL_HEIGHT, width=120)
+        self.count_cell.pack(side="left", fill="x", expand=True, padx=(0, 4))
+        self.suggest_cell = Cell(info, "Best next guesses", status_text="", height=style.CELL_HEIGHT, width=120)
+        self.suggest_cell.pack(side="left", fill="x", expand=True, padx=(4, 0))
 
-        with dpg.group():
-            for row in range(parameters.MAX_GUESSES):
-                with dpg.group(horizontal=True):
-                    tiles = []
-                    for col in range(parameters.WORD_LENGTH):
-                        tile = LetterTile(owner, row, col)
-                        tiles.append(tile)
-                        if col < parameters.WORD_LENGTH - 1:
-                            dpg.add_spacer(width=parameters.TILE_GAP)
-                if row < parameters.MAX_GUESSES - 1:
-                    dpg.add_spacer(height=parameters.TILE_GAP)
-                self.rows.append(tiles)
+        box = ttk.LabelFrame(self.root, text="Remaining words", padding=6)
+        box.pack(fill="both", expand=True, pady=(0, 10), **pad)
 
-    def tile(self, row, col):
-        return self.rows[row][col]
-
-    def clear(self):
-        for row in self.rows:
-            for tile in row:
-                tile.clear(notify=False)
-        self.owner.set_focus(0, 0)
-
-    def focus_first_tile(self):
-        self.owner.set_focus(0, 0)
-
-    def advance(self):
-        row, col = self.owner.focus_row, self.owner.focus_col
-        if col + 1 < parameters.WORD_LENGTH:
-            self.owner.set_focus(row, col + 1)
-        elif row + 1 < parameters.MAX_GUESSES:
-            self.owner.set_focus(row + 1, 0)
-
-    def backspace(self):
-        row, col = self.owner.focus_row, self.owner.focus_col
-
-        current = self.tile(row, col)
-        if current.letter:
-            current.clear()
-            return
-
-        if col > 0:
-            self.owner.set_focus(row, col - 1)
-            self.tile(row, col - 1).clear()
-        elif row > 0:
-            self.owner.set_focus(row - 1, parameters.WORD_LENGTH - 1)
-            self.tile(row - 1, parameters.WORD_LENGTH - 1).clear()
-
-
-class UI:
-    def __init__(self, mono_font=None):
-        self.wf = Filter()
-        self.focus_row = 0
-        self.focus_col = 0
-        self.themes = {}
-        self.focus_themes = {}
-        self.mono_font = mono_font
-
-        self._create_themes()
-        self._apply_global_theme()
-        self._create_ui()
-        self._run_filter_now()
-
-    # Dear PyGui setup
-    def _create_themes(self):
-        def tile_theme(bg, fg=parameters.TILE_TEXT, border=parameters.TILE_BORDER, border_size=1):
-            with dpg.theme() as theme:
-                with dpg.theme_component(dpg.mvButton):
-                    _theme_color("mvThemeCol_Button", self._rgb(bg))
-                    _theme_color("mvThemeCol_ButtonHovered", self._rgb(bg))
-                    _theme_color("mvThemeCol_ButtonActive", self._rgb(bg))
-                    _theme_color("mvThemeCol_Text", self._rgb(fg))
-                    _theme_style("mvStyleVar_FrameRounding", 3)
-                    _theme_style("mvStyleVar_FrameBorderSize", border_size)
-                    _theme_color("mvThemeCol_Border", self._rgb(border))
-            return theme
-        
-        for state, bg in {
-            "empty": Theme.COLOR_BG,
-            "absent": parameters.TILE_ABSENT,
-            "present": parameters.TILE_PRESENT,
-            "correct": parameters.TILE_CORRECT,
-        }.items():
-            self.themes[state] = tile_theme(bg)
-            self.focus_themes[state] = tile_theme(Theme.COLOR, border_size=2)
-
-    def _apply_global_theme(self):
-        with dpg.theme() as theme:
-            with dpg.theme_component(dpg.mvAll):
-                _theme_color("mvThemeCol_WindowBg", self._rgb(Theme.COLOR_BG))
-                _theme_color("mvThemeCol_ChildBg", self._rgb(Theme.COLOR_BG))
-                _theme_color("mvThemeCol_PopupBg", self._rgb(Theme.COLOR_BG))
-                _theme_color("mvThemeCol_Text", self._rgb(Theme.COLOR_FG))
-                _theme_color("mvThemeCol_Border", self._rgb(Theme.COLOR_DARK))
-                _theme_color("mvThemeCol_FrameBg", self._rgb(Theme.COLOR_BG_LIGHT))
-                _theme_color("mvThemeCol_FrameBgHovered", self._rgb(Theme.COLOR_DARK))
-                _theme_color("mvThemeCol_FrameBgActive", self._rgb(Theme.COLOR_DARK))
-                _theme_color("mvThemeCol_ScrollbarBg", self._rgb(Theme.COLOR_BG))
-                _theme_color("mvThemeCol_ScrollbarGrab", self._rgb(Theme.COLOR))
-                _theme_color("mvThemeCol_ScrollbarGrabHovered", self._rgb(Theme.COLOR))
-                _theme_color("mvThemeCol_ScrollbarGrabActive", self._rgb(Theme.COLOR))
-                _theme_style("mvStyleVar_ScrollbarSize", 14)
-
-            with dpg.theme_component(dpg.mvButton):
-                _theme_color("mvThemeCol_Button", self._rgb(Theme.COLOR_BG_LIGHT))
-                _theme_color("mvThemeCol_ButtonHovered", self._rgb(Theme.COLOR_DARK))
-                _theme_color("mvThemeCol_ButtonActive", self._rgb(Theme.COLOR))
-                _theme_style("mvStyleVar_FrameRounding", 4)
-                _theme_style("mvStyleVar_FramePadding", 8, 6)
-
-        dpg.bind_theme(theme)
-
-    @staticmethod
-    def _rgb(hex_color):
-        value = hex_color.lstrip("#")
-        return [int(value[i:i + 2], 16) for i in (0, 2, 4)] + [255]
-
-    def _create_ui(self):
-        with dpg.handler_registry():
-            dpg.add_key_press_handler(callback=self._on_key_press, tag="wordl_key_handler")
-
-        self.content_width = parameters.WINDOW_WIDTH - 40  # rough allowance for window padding
-        board_width = parameters.WORD_LENGTH * parameters.TILE_SIZE + (parameters.WORD_LENGTH - 1) * parameters.TILE_GAP
-        board_height = parameters.MAX_GUESSES * parameters.TILE_SIZE + (parameters.MAX_GUESSES - 1) * parameters.TILE_GAP + 10
-        clear_width = 140
-
-        self.window_height = (
-            8 + 30 + 14             # header + spacer
-            + board_height + 12     # board + spacer
-            + 32 + 16               # clear button + spacer
-            + 24 + 8                # count label + spacer
-            + 280                   # result list
-            + 40                    # chrome / safety margin
+        self.text = tk.Text(
+            box, width=LIST_COLUMNS * (WORD_LENGTH + 2) - 2, height=LIST_ROWS, wrap="none", cursor="arrow",
+            bg=style.COLOR_BG_LIGHT, fg=style.COLOR_STATUS_TEXT, font=style.FONT_MONO_LIST,
+            relief="flat", borderwidth=0, highlightthickness=0, padx=8, pady=6, takefocus=0,
+            selectbackground=style.COLOR_DARK, selectforeground=style.COLOR_FG, spacing1=2, spacing3=2,
         )
+        scroll = ttk.Scrollbar(box, orient="vertical", command=self.text.yview)
+        self.text.configure(yscrollcommand=scroll.set)
+        self.text.pack(side="left", fill="both", expand=True)
+        scroll.pack(side="right", fill="y")
 
-        with dpg.window(
-            tag="main_window",
-            label=parameters.WINDOW_TITLE,
-            width=parameters.WINDOW_WIDTH,
-            height=self.window_height,
-            no_collapse=True,
-            no_resize=False,
-            no_scrollbar=True,
-            no_scroll_with_mouse=True,
-        ):
-            # No child_window here on purpose: a child_window adds its own
-            # internal padding, which was silently clipping the 5th tile.
-            # The board sits directly in the (centered) group instead.
-            with dpg.group(horizontal=True):
-                dpg.add_spacer(width=max(0, (self.content_width - board_width) // 2))
-                self.board = Board(self)
+        self.text.tag_configure("word", foreground=style.COLOR_STATUS_TEXT)
+        self.text.tag_configure("hint", foreground=style.COLOR_FG)
+        self.text.tag_bind("word", "<Enter>", lambda _e: self.text.configure(cursor="hand2"))
+        self.text.tag_bind("word", "<Leave>", lambda _e: self.text.configure(cursor="arrow"))
+        self.text.bind("<Button-1>", self._on_word_click)
+        self.text.configure(state="disabled")
 
-            dpg.add_spacer(height=12)
+    def _size_to_content(self) -> None:
+        self.root.update_idletasks()
+        width, height = self.root.winfo_reqwidth(), self.root.winfo_reqheight()
+        self.root.geometry(f"{width}x{height}")
+        self.root.minsize(width, height)
 
-            with dpg.group(horizontal=True):
-                dpg.add_spacer(width=max(0, (self.content_width - clear_width) // 2))
-                dpg.add_button(label="Clear", width=clear_width, height=32, callback=self.clear_board)
-
-            dpg.add_spacer(height=16)
-
-            self.count_label = dpg.add_text("0 possible words", color=self._rgb(Theme.COLOR_STATUS_TEXT))
-
-            dpg.add_spacer(height=8)
-
-            with dpg.child_window(tag="result_container", width=-1, height=parameters.RESULT_HEIGHT,border=True):
-                # Plain text, not input_text: a readonly input_text can still grab keyboard focus on click, and while it has focus the global key_press_handler stops seeing letter keys — that's what was blocking typing. add_text can never take focus.
-                self.result_text = dpg.add_text(
-                    tag="result_text",
-                    default_value="",
-                )
-                if self.mono_font:
-                    try:
-                        dpg.bind_item_font(self.result_text, self.mono_font)
-                    except Exception:
-                        pass
-
-        self.board.focus_first_tile()
-
-    def is_focused(self, row, col):
-        return self.focus_row == row and self.focus_col == col
-
-    def set_focus(self, row, col):
-        old_row, old_col = self.focus_row, self.focus_col
-        self.focus_row, self.focus_col = row, col
-        if hasattr(self, "board"):
-            self.board.tile(old_row, old_col).redraw()
-            self.board.tile(row, col).redraw()
-
-    def _on_key_press(self, sender, app_data, user_data=None):
-        key = app_data
-
-        if KEY_BACKSPACE is not None and key in (KEY_BACKSPACE, KEY_DELETE):
+    # --------- keyboard / mouse
+    def _on_key(self, event) -> None:
+        key = event.keysym
+        if key in ("BackSpace", "Delete"):
             self.board.backspace()
+        elif key == "space":
+            self.board.cycle()
+        elif key == "Left":
+            self.board.move(-1)
+        elif key == "Right":
+            self.board.move(1)
+        elif key == "Up":
+            self.board.move(-WORD_LENGTH)
+        elif key == "Down":
+            self.board.move(WORD_LENGTH)
+        elif len(event.char) == 1 and event.char.isascii() and event.char.isalpha():
+            self.board.put_letter(event.char)
+
+    def _on_word_click(self, event):
+        index = self.text.index(f"@{event.x},{event.y}")
+        word = self.text.get(f"{index} wordstart", f"{index} wordend").strip()
+        if len(word) == WORD_LENGTH and word.isalpha():
+            self.board.fill_next_row(word)
+        return "break"          # no text selection / caret in the read-only list
+
+    # --------- filtering
+    def _update(self) -> None:
+        rows = self.board.complete_rows()
+        if rows == self._last_key:                     # e.g. typing into an unfinished row: nothing to recompute
             return
+        self._last_key = rows
 
-        if KEY_SPACE is not None and key == KEY_SPACE:
-            self.board.tile(self.focus_row, self.focus_col).cycle_state()
-            return
+        self.filter.reset()
+        for guess, pattern in rows:
+            self.filter.add_guess(guess, pattern)
+        words = self.filter.filter()
+        suggestions = self.filter.suggest(words)
 
-        if isinstance(key, int) and KEY_A <= key <= KEY_Z:
-            self._put_letter(chr(ord("A") + (key - KEY_A)))
-            return
+        self.count_cell.set_status(f"{len(words)} of {len(self.filter.wordlist)}")
+        self.suggest_cell.set_status("  ".join(w.upper() for w, _ in suggestions) or "-")
+        self._show_words(words)
 
-        if isinstance(key, str) and len(key) == 1 and key in string.ascii_letters:
-            self._put_letter(key)
-
-    def _put_letter(self, letter):
-        tile = self.board.tile(self.focus_row, self.focus_col)
-        tile.set_letter(letter)
-        self.board.advance()
-
-    def on_tile_changed(self):
-        self._run_filter_now()
-
-    def _run_filter_now(self):
-        self.wf.reset()
-
-        for row in self.board.rows:
-            for col, tile in enumerate(row):
-                letter = tile.letter.lower()
-                if not letter:
-                    continue
-
-                if tile.state == "correct":
-                    self.wf.add_fixed(col, letter)
-                elif tile.state == "present":
-                    self.wf.add_present(letter, col)
-                elif tile.state == "absent":
-                    self.wf.add_absent(letter)
-
-        results = self.wf.filter()
-
-        dpg.set_value(self.count_label, f"{len(results)} possible word(s)")
-        dpg.set_value(self.result_text, self._format_results(results, self.content_width))
-
-    @staticmethod
-    def _format_results(words, available_width):
+    def _show_words(self, words: list[str]) -> None:
+        self.text.configure(state="normal")
+        self.text.delete("1.0", "end")
         if not words:
-            return "No matches."
-
-        upper = [word.upper() for word in words]
-        col_chars = max(len(word) for word in upper) + 3
-        # Rough monospace char-width estimate (Consolas-ish); deliberately a bit conservative so lines never overflow the box and wrap oddly.
-        char_px = 11
-        col_px = col_chars * char_px
-        columns = max(1, available_width // col_px)
-
-        col_width = col_chars
-        lines = []
-        for i in range(0, len(upper), columns):
-            row = upper[i:i + columns]
-            lines.append("".join(word.ljust(col_width) for word in row))
-
-        return "\n".join(lines)
-
-    def clear_board(self, sender=None, app_data=None, user_data=None):
-        self.board.clear()
-        self.wf.reset()
-        self._run_filter_now()
+            self.text.insert("end", "No matches -- check the tile colors (new rows start all grey).", "hint")
+        else:
+            for i, word in enumerate(words):
+                self.text.insert("end", word.upper(), "word")
+                last_in_line = (i + 1) % LIST_COLUMNS == 0 or i == len(words) - 1
+                self.text.insert("end", "\n" if last_in_line else "  ")
+        self.text.configure(state="disabled")
+        self.text.yview_moveto(0)
 
 
-def run():
-    enable_dpi_awareness()
-    dpg.create_context()
-
-    scale = get_dpi_scale()
-    loaded_ui_font, mono_font = _setup_fonts(scale)
-
-    ui = UI(mono_font=mono_font)
-
-    viewport_width = parameters.WINDOW_WIDTH + 20
-    viewport_height = ui.window_height + 20
-
-    dpg.create_viewport(
-        title=parameters.WINDOW_TITLE,
-        width=viewport_width,
-        height=viewport_height,
-    )
-    center_viewport(viewport_width, viewport_height)
-
-    dpg.setup_dearpygui()
-
-    if not loaded_ui_font and scale and scale != 1.0:
-        dpg.set_global_font_scale(scale)
-
-    dpg.show_viewport()
-    apply_dark_titlebar_by_title(parameters.WINDOW_TITLE)
-    dpg.set_primary_window("main_window", True)
-
-    dpg.start_dearpygui()
-    dpg.destroy_context()
+def run() -> None:
+    style.enable_dpi_awareness()
+    root = tk.Tk()
+    App(root)
+    root.mainloop()

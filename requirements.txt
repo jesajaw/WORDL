@@ -1,2 +1,2 @@
-# python>=3.9
-dearpygui>=1.10
+# No third-party dependencies: the desktop app uses tkinter, which ships with Python (3.9+).
+# On some Linux distros install it separately, e.g.: sudo apt install python3-tk
