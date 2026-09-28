@@ -7,7 +7,7 @@ import dearpygui.dearpygui as dpg
 
 from .config import parameters
 from .theme import Theme
-from .filter import Filter
+from ..src.filter import Filter
 
 
 

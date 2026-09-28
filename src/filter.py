@@ -1,5 +1,5 @@
 # This file contains a list of valid 5-letter words — it may not be up to date with the current WORDL list
-from .config import parameters
+from ..ui.config import parameters
 from .wordlist import WORDS
 
 class Filter: # filters a word list based on Wordle-style clues
