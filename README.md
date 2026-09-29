@@ -4,10 +4,7 @@ Wordle is a fantastic daily puzzle game, and while there are many versions avail
 
 If you have ever watched 3Blue1Brown's brilliant video, [Solving Wordle using information theory](https://www.youtube.com/watch?v=v68zYyaEmEA), you know how fascinating the strategy behind optimal guessing can be. However, sometimes you just need a little extra assistance cracking the daily puzzle.
 
-That is why I put together this simple tool -- to help guide you toward the solution and make solving the puzzle a breeze! It comes in two flavors that share the same logic and look:
-
-* **Web version** (`index.html`) -- runs directly in the browser, hosted for free on GitHub Pages: <https://jesajaw.github.io/WORDL/>
-* **Desktop version** (`main.py`) -- a tkinter app.
+That is why I put together this simple tool -- to help guide you toward the solution and make solving the puzzle a breeze!
 
 ---
 
@@ -50,7 +47,7 @@ WORDL/
 
 ### Web (GitHub Pages)
 
-Just click on the link under “About Us” in the sidebar or [here](jesajaw.github.io/WORDL/)
+Just click on the link under “About” in the sidebar or [here](jesajaw.github.io/WORDL/)
 
 If you change `words.txt`, run:
 ```bash
