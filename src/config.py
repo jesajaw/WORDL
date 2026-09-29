@@ -1,4 +1,4 @@
-"""Global, UI-independent parameters (shared by the filter engine and the tkinter UI)."""
+# Global, UI-independent parameters (shared by the filter engine and the tkinter UI)
 
 WORD_LENGTH = 5
 MAX_GUESSES = 6
@@ -10,7 +10,6 @@ PRESENT = "present"    # yellow - letter is in the word, but at another position
 CORRECT = "correct"    # green  - letter sits exactly here
 CYCLE = (ABSENT, PRESENT, CORRECT)
 
-# Suggestions: exact information-gain (entropy) ranking is used up to this many
-# remaining words, above it a cheap letter-frequency score is used instead.
-ENTROPY_LIMIT = 150
-SUGGESTION_COUNT = 3
+WINDOW_TITLE = "WORDL Filter"
+LIST_COLUMNS = 6            # words per line in the result list
+LIST_ROWS = 9               # visible lines of the result list

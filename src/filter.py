@@ -13,7 +13,7 @@ from __future__ import annotations
 from collections import Counter
 from math import log2
 
-from .config import ABSENT, CORRECT, ENTROPY_LIMIT, PRESENT, SUGGESTION_COUNT, WORD_LENGTH
+from .config import ABSENT, CORRECT, PRESENT, WORD_LENGTH
 from .wordlist import load_words
 
 
@@ -56,31 +56,3 @@ class Filter:
     def filter(self) -> list[str]:
         return [w for w in self.wordlist
                 if all(feedback(g, w) == p for g, p in self.guesses)]
-
-    def suggest(self, candidates: list[str], limit: int = SUGGESTION_COUNT) -> list[tuple[str, float]]:
-        """Best next guesses among the remaining words, as (word, score) -- higher is better."""
-        if not candidates:
-            return []
-        if len(candidates) <= 2:
-            return [(w, 1.0) for w in candidates]
-        if len(candidates) <= ENTROPY_LIMIT:
-            scored = [(g, self._entropy(g, candidates)) for g in candidates]
-        else:
-            scored = self._frequency_scores(candidates)
-        scored.sort(key=lambda item: (-round(item[1], 9), item[0]))   # rounding: equal scores tie-break alphabetically, not by float noise
-        return scored[:limit]
-
-    @staticmethod
-    def _entropy(guess: str, candidates: list[str]) -> float:
-        # Expected information (in bits) of playing `guess` against the remaining words
-        buckets = Counter(feedback(guess, c) for c in candidates)
-        total = len(candidates)
-        return -sum((n / total) * log2(n / total) for n in buckets.values())
-
-    def _frequency_scores(self, candidates: list[str]) -> list[tuple[str, float]]:
-        per_position = [Counter(w[i] for w in candidates) for i in range(self.word_length)]
-        overall = Counter(ch for w in candidates for ch in set(w))
-        total = len(candidates)
-        return [(w, (sum(per_position[i][ch] for i, ch in enumerate(w))
-                     + sum(overall[ch] for ch in set(w))) / total)
-                for w in candidates]

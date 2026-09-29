@@ -11,19 +11,10 @@ from __future__ import annotations
 import tkinter as tk
 from tkinter import ttk
 
-from src.config import WORD_LENGTH
+from src.config import WORD_LENGTH, WINDOW_TITLE, LIST_COLUMNS, LIST_ROWS
 from src.filter import Filter
 from . import dialogs, style
 from .widgets import Board, Cell
-
-WINDOW_TITLE = "WORDL Filter"
-LIST_COLUMNS = 6            # words per line in the result list
-LIST_ROWS = 9               # visible lines of the result list
-INSTRUCTIONS = (
-    "Type your guess, then click a tile to cycle its color (grey > yellow > green).\n"
-    "Space = cycle, Backspace = delete, arrows = move. Click a word below to use it as the next guess."
-)
-
 
 class App:
     def __init__(self, root: tk.Tk):
@@ -44,12 +35,9 @@ class App:
         self._update()
         self._size_to_content()
 
-    # --------- UI
+    # UI
     def _build(self) -> None:
         pad = dict(padx=10)
-
-        ttk.Label(self.root, text=WINDOW_TITLE, style="CategoryHeader.TLabel", font=style.FONT_TITLE).pack(anchor="w", pady=(10, 2), **pad)
-        ttk.Label(self.root, text=INSTRUCTIONS, style="Status.TLabel", justify="left").pack(anchor="w", pady=(0, 8), **pad)
 
         self.board = Board(self.root, on_change=self._update)
         self.board.pack(pady=(0, 6))
@@ -57,24 +45,23 @@ class App:
         buttons = ttk.Frame(self.root)
         buttons.pack(fill="x", pady=(0, 8), **pad)
         Cell(buttons, "Clear", on_click=self.board.clear, height=40, width=80).pack(side="left", fill="x", expand=True, padx=(0, 4))
-        Cell(buttons, "Undo row", on_click=self.board.remove_last_row, height=40, width=80).pack(side="left", fill="x", expand=True, padx=(4, 0))
+        Cell(buttons, "Undo", on_click=self.board.remove_last_row, height=40, width=80).pack(side="left", fill="x", expand=True, padx=(4, 0))
 
         info = ttk.Frame(self.root)
         info.pack(fill="x", pady=(0, 8), **pad)
         self.count_cell = Cell(info, "Possible words", status_text="", height=style.CELL_HEIGHT, width=120)
-        self.count_cell.pack(side="left", fill="x", expand=True, padx=(0, 4))
-        self.suggest_cell = Cell(info, "Best next guesses", status_text="", height=style.CELL_HEIGHT, width=120)
-        self.suggest_cell.pack(side="left", fill="x", expand=True, padx=(4, 0))
-
+        self.count_cell.pack(side="left", fill="x", expand=True, padx=(0, 8))
+        
         box = ttk.LabelFrame(self.root, text="Remaining words", padding=6)
         box.pack(fill="both", expand=True, pady=(0, 10), **pad)
 
         self.text = tk.Text(
-            box, width=LIST_COLUMNS * (WORD_LENGTH + 2) - 2, height=LIST_ROWS, wrap="none", cursor="arrow",
-            bg=style.COLOR_BG_LIGHT, fg=style.COLOR_STATUS_TEXT, font=style.FONT_MONO_LIST,
-            relief="flat", borderwidth=0, highlightthickness=0, padx=8, pady=6, takefocus=0,
-            selectbackground=style.COLOR_DARK, selectforeground=style.COLOR_FG, spacing1=2, spacing3=2,
+            box, width=LIST_COLUMNS * (WORD_LENGTH + 2) - 2,
+            height=LIST_ROWS, wrap="none", cursor="arrow",
+            bg=style.COLOR_BG_LIGHT, fg=style.COLOR_STATUS_TEXT, font=style.FONT_MONO_LIST, relief="flat", borderwidth=0, highlightthickness=0, padx=8, pady=6, takefocus=0, selectbackground=style.COLOR_DARK, selectforeground=style.COLOR_FG, spacing1=2, spacing3=2,
         )
+
+        
         scroll = ttk.Scrollbar(box, orient="vertical", command=self.text.yview)
         self.text.configure(yscrollcommand=scroll.set)
         self.text.pack(side="left", fill="both", expand=True)
@@ -93,7 +80,7 @@ class App:
         self.root.geometry(f"{width}x{height}")
         self.root.minsize(width, height)
 
-    # --------- keyboard / mouse
+    # keyboard / mouse
     def _on_key(self, event) -> None:
         key = event.keysym
         if key in ("BackSpace", "Delete"):
@@ -118,10 +105,10 @@ class App:
             self.board.fill_next_row(word)
         return "break"          # no text selection / caret in the read-only list
 
-    # --------- filtering
+    # filtering
     def _update(self) -> None:
         rows = self.board.complete_rows()
-        if rows == self._last_key:                     # e.g. typing into an unfinished row: nothing to recompute
+        if rows == self._last_key:
             return
         self._last_key = rows
 
@@ -129,10 +116,8 @@ class App:
         for guess, pattern in rows:
             self.filter.add_guess(guess, pattern)
         words = self.filter.filter()
-        suggestions = self.filter.suggest(words)
 
         self.count_cell.set_status(f"{len(words)} of {len(self.filter.wordlist)}")
-        self.suggest_cell.set_status("  ".join(w.upper() for w, _ in suggestions) or "-")
         self._show_words(words)
 
     def _show_words(self, words: list[str]) -> None:
