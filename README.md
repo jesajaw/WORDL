@@ -72,4 +72,4 @@ python main.py
 * And thanks to [Claude](claude.ai/) for building this `.html` shit I would never do on my own.
 
 ## 📜 License
-Distributed under the MIT License. See `LICENSE` for more information.
+Distributed under the MIT License. See [`LICENSE`](LICENSE) for more information.
