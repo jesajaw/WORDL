@@ -1,11 +1,3 @@
-"""
-Embeds words.txt into index.html so the page is a single self-contained file
-(works on GitHub Pages *and* when opened directly from disk).
-
-Run this after editing words.txt:
-    python tools/build_html.py
-"""
-
 import re
 import sys
 from pathlib import Path
