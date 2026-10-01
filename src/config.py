@@ -1,4 +1,6 @@
-# Global, UI-independent parameters (shared by the filter engine and the tkinter UI)
+from pathlib import Path
+
+# Global, UI-independent parameters
 
 WORD_LENGTH = 5
 MAX_GUESSES = 6
@@ -13,3 +15,5 @@ CYCLE = (ABSENT, PRESENT, CORRECT)
 WINDOW_TITLE = "WORDL Filter"
 LIST_COLUMNS = 6            # words per line in the result list
 LIST_ROWS = 9               # visible lines of the result list
+
+WORDS_FILE = Path(__file__).resolve().parent.parent / "words.txt"
