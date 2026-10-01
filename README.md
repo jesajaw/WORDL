@@ -15,8 +15,9 @@ That is why I put together this simple tool -- to help guide you toward the solu
   * ⬛ **Absent**: Letter is not in the word.
   * 🟨 **Present**: Letter exists in the target word, but in a different position.
   * 🟩 **Correct**: Letter is fixed in the exact position.
+* **Click-to-guess**: click any word in the list to put it on the board as your next guess.
 * **Live filtering**: recomputes the list of remaining possible words after every change.
-* **Color theme**: dark theme defined in `src/theme.py`, with two additional presets (`dark_purple`, `black_white`) ready to switch to by changing `_active` in that file.
+* **Color theme**: switch themes in `ui/style.py` by changing `_active` in that file.
 
 ---
 
@@ -30,7 +31,7 @@ WORDL/
 ├── src/
 │   ├── config.py       # shared parameters (word length, tile states, ...)
 │   ├── wordlist.py     # loads words
-│   └── filter.py       # feedback replay, filtering, suggestions
+│   └── filter.py       # feedback replay, filtering
 ├── ui/
 │   ├── app.py          # tkinter main window
 │   ├── widgets.py      # Cell, Tile, Board
@@ -47,7 +48,7 @@ WORDL/
 
 ### Web (GitHub Pages)
 
-Just click on the link under “About” in the sidebar or [here](jesajaw.github.io/WORDL/)
+Just click on the link under “About” in the sidebar or [here](https://jesajaw.github.io/WORDL/)
 
 If you change `words.txt`, run:
 ```bash
@@ -69,7 +70,7 @@ python main.py
 
 * [3Blue1Brown](https://www.youtube.com/@3blue1brown), for the brilliant [video](https://www.youtube.com/watch?v=v68zYyaEmEA) on Wordle and information theory that brought this project up.
 * The New York Times for creating and maintaining the daily puzzle phenomenon [NYT WORDL](https://www.nytimes.com/games/wordle/index.html).
-* And thanks to [Claude](claude.ai/) for building this `.html` shit I would never do on my own.
+* And thanks to [Claude](https://claude.ai/) for building the `.html` version I would never do on my own.
 
 ## 📜 License
 Distributed under the MIT License. See [`LICENSE`](LICENSE) for more information.

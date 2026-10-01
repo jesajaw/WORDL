@@ -50,8 +50,8 @@ class App:
         info = ttk.Frame(self.root)
         info.pack(fill="x", pady=(0, 8), **pad)
         self.count_cell = Cell(info, "Possible words", status_text="", height=style.CELL_HEIGHT, width=120)
-        self.count_cell.pack(side="left", fill="x", expand=True, padx=(0, 8))
-        
+        self.count_cell.pack(side="left", fill="x", expand=True)
+
         box = ttk.LabelFrame(self.root, text="Remaining words", padding=6)
         box.pack(fill="both", expand=True, pady=(0, 10), **pad)
 
@@ -60,8 +60,6 @@ class App:
             height=LIST_ROWS, wrap="none", cursor="arrow",
             bg=style.COLOR_BG_LIGHT, fg=style.COLOR_STATUS_TEXT, font=style.FONT_MONO_LIST, relief="flat", borderwidth=0, highlightthickness=0, padx=8, pady=6, takefocus=0, selectbackground=style.COLOR_DARK, selectforeground=style.COLOR_FG, spacing1=2, spacing3=2,
         )
-
-        
         scroll = ttk.Scrollbar(box, orient="vertical", command=self.text.yview)
         self.text.configure(yscrollcommand=scroll.set)
         self.text.pack(side="left", fill="both", expand=True)
