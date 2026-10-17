@@ -70,7 +70,7 @@ python main.py
 
 * [3Blue1Brown](https://www.youtube.com/@3blue1brown), for the brilliant [video](https://www.youtube.com/watch?v=v68zYyaEmEA) on Wordle and information theory that brought this project up.
 * The New York Times for creating and maintaining the daily puzzle phenomenon [NYT WORDL](https://www.nytimes.com/games/wordle/index.html).
-* And thanks to [Claude](https://claude.ai/) for building the `.html` version I would never do on my own.
+* And thanks to [Claude](https://claude.ai/) for building the `.html` version I would never do on my own -- and for providing the ui!
 
 ## 📜 License
 Distributed under the MIT License. See [`LICENSE`](LICENSE) for more information.
